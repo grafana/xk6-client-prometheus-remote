@@ -1,4 +1,4 @@
-import { check } from 'k6';
+import { check, sleep } from 'k6';
 import remote from 'k6/x/remotewrite';
 
 export let options = {
