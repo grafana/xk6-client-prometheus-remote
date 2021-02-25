@@ -2,6 +2,7 @@ package remotewrite
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
@@ -79,6 +80,8 @@ func (c *Client) Store(ctx context.Context, labels map[string]string, value floa
 		},
 	}
 
+	writeOptions := promremote.WriteOptions{}
+
 	state := lib.GetState(ctx)
 	err := errors.New("State is nil")
 
@@ -92,8 +95,14 @@ func (c *Client) Store(ctx context.Context, labels map[string]string, value floa
 		Value:  float64(1),
 	})
 
+	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
+		Metric: DataSent,
+		Time:   time.Time{},
+		Value:  float64(binary.Size(tsList) + binary.Size(writeOptions)),
+	})
+
 	start := time.Now()
-	result, writeErr := c.client.WriteTimeSeries(context.Background(), tsList, promremote.WriteOptions{})
+	result, writeErr := c.client.WriteTimeSeries(context.Background(), tsList, writeOptions)
 	elapsed := time.Since(start)
 
 	if err := error(writeErr); err != nil {

@@ -79,7 +79,7 @@ default ✓ [======================================] 10 VUs  10s
 
      checks......................: 100.00% ✓ 90   ✗ 0   
      data_received...............: 0 B     0 B/s
-     data_sent...................: 0 B     0 B/s
+     data_sent...................: 18 EB   18 EB/s
      iteration_duration..........: avg=1.14s    min=1.12s med=1.13s max=1.25s p(90)=1.23s   p(95)=1.25s  
      iterations..................: 90      8.672493/s
      remote_write_req_duration...: avg=145.77ms min=129ms med=132ms max=253ms p(90)=236.1ms p(95)=251.1ms
