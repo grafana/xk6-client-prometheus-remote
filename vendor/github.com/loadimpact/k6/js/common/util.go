@@ -28,11 +28,6 @@ import (
 	"github.com/dop251/goja"
 )
 
-// RunString Runs an string in the given runtime. Use this if writing ES5 in tests isn't a problem.
-func RunString(rt *goja.Runtime, src string) (goja.Value, error) {
-	return rt.RunString(src)
-}
-
 // Throw a JS error; avoids re-wrapping GoErrors.
 func Throw(rt *goja.Runtime, err error) {
 	if e, ok := err.(*goja.Exception); ok {
@@ -54,5 +49,19 @@ func GetReader(data interface{}) (io.Reader, error) {
 		return bytes.NewBuffer(r.Bytes()), nil
 	default:
 		return nil, fmt.Errorf("invalid type %T, it needs to be a string, byte array or an ArrayBuffer", data)
+	}
+}
+
+// ToBytes tries to return a byte slice from compatible types.
+func ToBytes(data interface{}) ([]byte, error) {
+	switch dt := data.(type) {
+	case []byte:
+		return dt, nil
+	case string:
+		return []byte(dt), nil
+	case goja.ArrayBuffer:
+		return dt.Bytes(), nil
+	default:
+		return nil, fmt.Errorf("invalid type %T, expected string, []byte or ArrayBuffer", data)
 	}
 }
