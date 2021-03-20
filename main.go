@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dgzlopes/prometheus_remote_client_golang/promremote"
 	"github.com/loadimpact/k6/js/common"
 	"github.com/loadimpact/k6/js/modules"
 	"github.com/loadimpact/k6/lib"
 	"github.com/loadimpact/k6/stats"
-	"github.com/m3db/prometheus_remote_client_golang/promremote"
 )
 
 type dp promremote.Datapoint
