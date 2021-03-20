@@ -45,7 +45,7 @@ export default function () {
     let res = client.storeNow({
         "__name__": `foo_bar${__VU}`,
         "foo": "bar"
-    }, 12356)
+    }, Math.random() * 100)
     check(res, {
         'is status 200': (r) => r.status === 200,
     });
