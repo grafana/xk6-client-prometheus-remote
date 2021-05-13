@@ -1,6 +1,6 @@
 # xk6-remote-write
 
-This is a [k6](https://github.com/loadimpact/k6) extension using the [xk6](https://github.com/k6io/xk6) system.
+This is a [k6](https://go.k6.io/k6) extension using the [xk6](https://github.com/k6io/xk6) system.
 
 | :exclamation: This is a proof of concept, isn't supported by the k6 team, and may break in the future. USE AT YOUR OWN RISK! |
 |------|
@@ -14,16 +14,14 @@ To build a `k6` binary with this extension, first ensure you have the prerequisi
 
 Then:
 
-1. Clone `xk6`:
+1. Install `xk6`:
   ```shell
-  git clone https://github.com/k6io/xk6.git
-  cd xk6
+  $ go install github.com/k6io/xk6/cmd/xk6@latest
   ```
 
 2. Build the binary:
   ```shell
-  CGO_ENABLED=1 go run ./cmd/xk6/main.go build master \
-    --with github.com/dgzlopes/xk6-remote-write
+  $ xk6 build --with github.com/dgzlopes/xk6-remote-write@latest
   ```
 
 ## Example

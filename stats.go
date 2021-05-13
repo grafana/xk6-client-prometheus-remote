@@ -1,6 +1,6 @@
 package remotewrite
 
-import "github.com/loadimpact/k6/stats"
+import "go.k6.io/k6/stats"
 
 var (
 	DataSent = stats.New("data_sent", stats.Counter, stats.Data)

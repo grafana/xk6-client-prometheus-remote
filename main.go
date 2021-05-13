@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/dgzlopes/prometheus_remote_client_golang/promremote"
-	"github.com/loadimpact/k6/js/common"
-	"github.com/loadimpact/k6/js/modules"
-	"github.com/loadimpact/k6/lib"
-	"github.com/loadimpact/k6/stats"
+	"go.k6.io/k6/js/common"
+	"go.k6.io/k6/js/modules"
+	"go.k6.io/k6/lib"
+	"go.k6.io/k6/stats"
 )
 
 type dp promremote.Datapoint
