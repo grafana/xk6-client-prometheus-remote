@@ -1,6 +1,6 @@
 # xk6-remote-write
 
-This is a [k6](https://go.k6.io/k6) extension using the [xk6](https://github.com/k6io/xk6) system.
+This is a [k6](https://go.k6.io/k6) extension using the [xk6](https://github.com/grafana/xk6) system.
 
 | :exclamation: This is a proof of concept, isn't supported by the k6 team, and may break in the future. USE AT YOUR OWN RISK! |
 |------|
@@ -16,7 +16,7 @@ Then:
 
 1. Install `xk6`:
   ```shell
-  $ go install github.com/k6io/xk6/cmd/xk6@latest
+  $ go install go.k6.io/xk6/cmd/xk6@latest
   ```
 
 2. Build the binary:
