@@ -20,6 +20,7 @@ export let options = {
 
 const client = new remote.Client({
     url: "<your-remote-write-url>",
+    timeout: "20s"
 });
 
 export function increaseCounter() {

@@ -13,6 +13,7 @@ import (
 	"github.com/golang/snappy"
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/prompb"
+	"github.com/xhit/go-str2duration/v2"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
@@ -39,7 +40,7 @@ type Client struct {
 type Config struct {
 	Url        string
 	UserAgent  string
-	Timeout    time.Duration
+	Timeout    string
 	TenantName string
 }
 
@@ -51,8 +52,8 @@ func (r *RemoteWrite) XClient(ctxPtr *context.Context, config Config) interface{
 	if config.UserAgent == "" {
 		config.UserAgent = "k6-remote-write/0.0.1"
 	}
-	if config.Timeout == 0 {
-		config.Timeout = time.Second * 10
+	if config.Timeout == "" {
+		config.Timeout = "10s"
 	}
 
 	rt := common.GetRuntime(*ctxPtr)
@@ -124,7 +125,13 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (http.R
 	if c.cfg.TenantName != "" {
 		httpReq.Header.Set("X-Scope-OrgID", c.cfg.TenantName)
 	}
-	ctx, cancel := context.WithTimeout(ctx, c.cfg.Timeout)
+
+	duration, err := str2duration.ParseDuration(c.cfg.Timeout)
+	if err != nil {
+		return http.Response{}, err
+	}
+	fmt.Println(duration)
+	ctx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 
 	httpReq = httpReq.WithContext(ctx)
