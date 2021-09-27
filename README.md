@@ -1,4 +1,4 @@
-# xk6-remote-write
+# xk6-client-prometheus-remote
 
 This is a [k6](https://go.k6.io/k6) extension developed using the [xk6](https://github.com/grafana/xk6) system.
 
