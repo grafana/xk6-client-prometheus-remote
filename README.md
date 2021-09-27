@@ -1,9 +1,6 @@
 # xk6-remote-write
 
-This is a [k6](https://go.k6.io/k6) extension using the [xk6](https://github.com/grafana/xk6) system.
-
-| :exclamation: This is a proof of concept, isn't supported by the k6 team, and may break in the future. USE AT YOUR OWN RISK! |
-|------|
+This is a [k6](https://go.k6.io/k6) extension developed using the [xk6](https://github.com/grafana/xk6) system.
 
 ## Build
 
@@ -36,16 +33,21 @@ export let options = {
 };
 
 const client = new remote.Client({
-    endpoint: "<your-remote-write-endpoint>"
+    url: "<your-remote-write-url>"
 });
 
 export default function () {
-    let res = client.storeNow({
-        "__name__": `foo_bar${__VU}`,
-        "foo": "bar"
-    }, Math.random() * 100)
+    let res = client.store([{
+        "labels": [
+            { "name": "__name__", "value": `my_cool_metric_${__VU}` },
+            { "name": "service", "value": "bar" }
+        ],
+        "samples": [
+            { "value": Math.random() * 100, }
+        ]
+    }]);
     check(res, {
-        'is status 200': (r) => r.status === 200,
+        'is status 200': (r) => r.status_code === 200,
     });
     sleep(1)
 }
@@ -54,7 +56,7 @@ export default function () {
 Result output:
 
 ```
-$ ./k6 run example.js
+$ ./k6 run examples/basic.js
 
           /\      |‾‾| /‾‾/   /‾‾/   
      /\  /  \     |  |/  /   /  /    
@@ -63,7 +65,7 @@ $ ./k6 run example.js
   / __________ \  |__| \__\ \_____/ .io
 
   execution: local
-     script: ../example.js
+     script: examples/basic.js
      output: -
 
   scenarios: (100.00%) 1 scenario, 10 max VUs, 40s max duration (incl. graceful stop):
@@ -75,13 +77,14 @@ default ✓ [======================================] 10 VUs  10s
 
      ✓ is status 200
 
-     checks......................: 100.00% ✓ 90   ✗ 0   
+     checks......................: 100.00% ✓ 90       ✗ 0   
      data_received...............: 0 B     0 B/s
-     data_sent...................: 18 EB   18 EB/s
-     iteration_duration..........: avg=1.14s    min=1.12s med=1.13s max=1.25s p(90)=1.23s   p(95)=1.25s  
-     iterations..................: 90      8.672493/s
-     remote_write_req_duration...: avg=145.77ms min=129ms med=132ms max=253ms p(90)=236.1ms p(95)=251.1ms
-     remote_write_req_total......: 90      8.672493/s
-     vus.........................: 10      min=10 max=10
-     vus_max.....................: 10      min=10 max=10
+     data_sent...................: 6.2 kB  596 B/s
+     iteration_duration..........: avg=1.14s    min=1.13s med=1.13s max=1.26s p(90)=1.23s p(95)=1.24s  
+     iterations..................: 90      8.624555/s
+     remote_write_num_series.....: 90      8.624555/s
+     remote_write_req_duration...: avg=146.62ms min=129ms med=132ms max=260ms p(90)=231ms p(95)=242.1ms
+     remote_write_reqs...........: 90      8.624555/s
+     vus.........................: 10      min=10     max=10
+     vus_max.....................: 10      min=10     max=10
 ```
