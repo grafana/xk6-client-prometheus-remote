@@ -20,6 +20,8 @@ export let options = {
 
 const client = new remote.Client({
     url: "<your-remote-write-url>",
+    user_agent: "k6/advanced-script",
+    tenant_name: "<my-name>",
     timeout: "20s"
 });
 

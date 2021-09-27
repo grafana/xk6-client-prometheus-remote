@@ -38,10 +38,10 @@ type Client struct {
 }
 
 type Config struct {
-	Url        string
-	UserAgent  string
-	Timeout    string
-	TenantName string
+	Url        string `json:"url"`
+	UserAgent  string `json:"user_agent"`
+	Timeout    string `json:"timeout"`
+	TenantName string `json:"tenant_name"`
 }
 
 // XClient represents
@@ -130,7 +130,6 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (http.R
 	if err != nil {
 		return http.Response{}, err
 	}
-	fmt.Println(duration)
 	ctx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 
