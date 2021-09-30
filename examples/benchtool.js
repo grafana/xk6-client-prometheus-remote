@@ -2,7 +2,7 @@ import { check, sleep } from 'k6';
 import remote from 'k6/x/remotewrite';
 import { randomIntBetween } from "https://jslib.k6.io/k6-utils/1.1.0/index.js";
 
-// This example similar to Promtool's default workload file: https://github.com/grafana/cortex-tools/blob/main/docs/benchtool.md#example-workload-file
+// This example is similar to Promtool's default workload file: https://github.com/grafana/cortex-tools/blob/main/docs/benchtool.md#example-workload-file
 
 export let options = {
     vus: 5,
