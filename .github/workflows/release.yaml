@@ -22,3 +22,7 @@ jobs:
       - name: Get the tag name
         run: echo "TAG=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       - run: mv k6 k6_${{ env.TAG }}_linux_amd64
+      - uses: AButler/upload-release-assets@v2.0
+        with:
+          files: 'k6*'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
