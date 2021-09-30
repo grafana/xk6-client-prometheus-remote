@@ -86,9 +86,10 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (http.Response, err
 		return http.Response{}, errors.New("State is nil")
 	}
 
+	now := time.Now()
 	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
 		Metric: RemoteWriteNumSeries,
-		Time:   time.Time{},
+		Time:   now,
 		Value:  float64(len(batch)),
 	})
 
@@ -134,16 +135,17 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (http.R
 	defer cancel()
 
 	httpReq = httpReq.WithContext(ctx)
+	now := time.Now()
 
 	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
 		Metric: RemoteWriteReqs,
-		Time:   time.Time{},
+		Time:   now,
 		Value:  float64(1),
 	})
 
 	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
 		Metric: metrics.DataSent,
-		Time:   time.Time{},
+		Time:   now,
 		Value:  float64(binary.Size(req)),
 	})
 
@@ -156,14 +158,14 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (http.R
 
 	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
 		Metric: RemoteWriteReqDuration,
-		Time:   time.Time{},
+		Time:   now,
 		Value:  float64(elapsed.Milliseconds()),
 	})
 
 	if httpResp.StatusCode != http.StatusOK {
 		stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
 			Metric: RemoteWriteReqFailed,
-			Time:   time.Time{},
+			Time:   now,
 			Value:  float64(1),
 		})
 	}
