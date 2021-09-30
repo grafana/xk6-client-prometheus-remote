@@ -1,4 +1,4 @@
-module github.com/dgzlopes/xk6-remote-write
+module github.com/grafana/xk6-client-prometheus-remote
 
 go 1.15
 

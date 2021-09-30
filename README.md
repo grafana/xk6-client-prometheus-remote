@@ -20,7 +20,7 @@ Then:
 
 2. Build the binary:
   ```shell
-  $ xk6 build --with github.com/dgzlopes/xk6-remote-write@latest
+  $ xk6 build --with github.com/grafana/xk6-client-prometheus-remote@latest
   ```
 
 ## Example
