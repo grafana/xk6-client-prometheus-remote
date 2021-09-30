@@ -2,11 +2,16 @@
 
 This extension adds Prometheus Remote Write testing capabilities to [k6](https://go.k6.io/k6). You can test any service that accepts data via Prometheus remote_write API such as [Cortex](https://github.com/cortexproject/cortex), [Thanos](https://github.com/improbable-eng/thanos), [Prometheus itself](https://prometheus.io/docs/prometheus/latest/feature_flags/#remote-write-receiver) and other services [listed here](https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage).
 
-It is implemented using the [xk6](https://github.com/grafana/xk6) system.
+It is implemented using the [xk6](https://k6.io/blog/extending-k6-with-xk6/) system.
 
-## Build
+## Getting started  
 
-To build a `k6` binary with this extension, first ensure you have the prerequisites:
+To start using k6 with the extension you can:
+- Download and run the [binaries](https://github.com/grafana/xk6-client-prometheus-remote/releases) that we build on each release.
+- Pull and run the [Docker images](https://github.com/grafana/xk6-client-prometheus-remote/pkgs/container/xk6-client-prometheus-remote) that we build on each release.
+- Build your own binary from the source.
+
+If you wanna go with the last option, first, ensure you have the prerequisites:
 
 - [Go toolchain](https://go101.org/article/go-toolchain.html)
 - Git
