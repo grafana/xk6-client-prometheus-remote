@@ -1,6 +1,6 @@
 # xk6-client-prometheus-remote
 
-This extension adds Prometheus Remote Write testing capabilities to [k6](https://go.k6.io/k6). You can test any service that accepts data via Prometheus remote_write API such as [Cortex](https://github.com/cortexproject/cortex), [Thanos](https://github.com/improbable-eng/thanos), [Prometheus](https://prometheus.io/docs/prometheus/latest/feature_flags/#remote-write-receiver) itself and other services [listed here](https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage).
+This extension adds Prometheus Remote Write testing capabilities to [k6](https://go.k6.io/k6). You can test any service that accepts data via Prometheus remote_write API such as [Cortex](https://github.com/cortexproject/cortex), [Thanos](https://github.com/improbable-eng/thanos), [Prometheus itself](https://prometheus.io/docs/prometheus/latest/feature_flags/#remote-write-receiver) and other services [listed here](https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage).
 
 It is implemented using the [xk6](https://github.com/grafana/xk6) system.
 
@@ -90,3 +90,4 @@ default ✓ [======================================] 10 VUs  10s
      vus.........................: 10      min=10     max=10
      vus_max.....................: 10      min=10     max=10
 ```
+Inspect examples folder for more details.
