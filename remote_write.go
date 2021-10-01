@@ -18,6 +18,7 @@ import (
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/metrics"
+	"go.k6.io/k6/lib/netext"
 	"go.k6.io/k6/stats"
 )
 
@@ -143,11 +144,19 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (http.R
 		Value:  float64(1),
 	})
 
-	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
-		Metric: metrics.DataSent,
-		Time:   now,
-		Value:  float64(binary.Size(req)),
-	})
+	simpleNetTrail := netext.NetTrail{
+		BytesWritten: int64(binary.Size(req)),
+		StartTime:    now.Add(-time.Minute),
+		EndTime:      now,
+		Samples: []stats.Sample{
+			{
+				Time:   now,
+				Metric: metrics.DataSent,
+				Value:  float64(binary.Size(req)),
+			},
+		},
+	}
+	stats.PushIfNotDone(ctx, state.Samples, &simpleNetTrail)
 
 	start := time.Now()
 	httpResp, err := c.client.Do(httpReq)
