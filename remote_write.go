@@ -9,15 +9,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dop251/goja"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/snappy"
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/xhit/go-str2duration/v2"
-	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/netext"
 	"go.k6.io/k6/stats"
 )
@@ -25,15 +24,38 @@ import (
 // Register the extension on module initialization, available to
 // import from JS as "k6/x/remotewrite".
 func init() {
-	modules.Register("k6/x/remotewrite", new(RemoteWrite))
+	modules.Register("k6/x/remotewrite", new(RootModule))
+}
+
+type RootModule struct{}
+
+var _ modules.IsModuleV2 = RootModule{}
+
+func (_ RootModule) NewModuleInstance(core modules.InstanceCore) modules.Instance {
+	return &RemoteWrite{
+		InstanceCore: core,
+	}
 }
 
 // RemoteWrite is the k6 extension for interacting with Kubernetes jobs.
 type RemoteWrite struct {
+	modules.InstanceCore
+}
+
+func (r *RemoteWrite) GetExports() modules.Exports {
+	return modules.Exports{
+		Default: map[string]interface{}{
+			"Client": r.client,
+		},
+		Named: map[string]interface{}{
+			"Client": r.client,
+		},
+	}
 }
 
 // Client is the client wrapper.
 type Client struct {
+	core   modules.InstanceCore
 	client *http.Client
 	cfg    *Config
 }
@@ -45,8 +67,9 @@ type Config struct {
 	TenantName string `json:"tenant_name"`
 }
 
-// XClient represents
-func (r *RemoteWrite) XClient(ctxPtr *context.Context, config Config) interface{} {
+func (r *RemoteWrite) client(call goja.ConstructorCall, rt *goja.Runtime) *goja.Object {
+	var config Config
+	rt.ExportTo(call.Argument(0), &config)
 	if config.Url == "" {
 		log.Fatal(fmt.Errorf("url is required"))
 	}
@@ -57,11 +80,11 @@ func (r *RemoteWrite) XClient(ctxPtr *context.Context, config Config) interface{
 		config.Timeout = "10s"
 	}
 
-	rt := common.GetRuntime(*ctxPtr)
-	return common.Bind(rt, &Client{
+	return rt.ToValue(&Client{
+		core:   r.InstanceCore,
 		client: &http.Client{},
 		cfg:    &config,
-	}, ctxPtr)
+	}).ToObject(rt)
 }
 
 type Timeseries struct {
@@ -75,19 +98,20 @@ type Timeseries struct {
 	} `json:"samples"`
 }
 
-func (c *Client) Store(ctx context.Context, ts []Timeseries) (http.Response, error) {
-	var batch []prompb.TimeSeries
+func (c *Client) Store(ts []Timeseries) (http.Response, error) {
+	var batch []*prompb.TimeSeries
 	for _, t := range ts {
 		batch = append(batch, FromTimeseriesToPrometheusTimeseries(t))
 	}
 
 	// Required for k6 metrics
-	state := lib.GetState(ctx)
+	state := c.core.GetState()
 	if state == nil {
 		return http.Response{}, errors.New("State is nil")
 	}
 
 	now := time.Now()
+	ctx := c.core.GetContext()
 	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
 		Metric: RemoteWriteNumSeries,
 		Time:   now,
@@ -105,7 +129,7 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (http.Response, err
 
 	compressed := snappy.Encode(nil, data)
 
-	res, err := c.send(ctx, state, compressed)
+	res, err := c.send(state, compressed)
 	if err != nil {
 		return http.Response{}, errors.Wrap(err, "remote-write request failed")
 	}
@@ -115,7 +139,7 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (http.Response, err
 
 // send sends a batch of samples to the HTTP endpoint, the request is the proto marshalled
 // and encoded bytes
-func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (http.Response, error) {
+func (c *Client) send(state *lib.State, req []byte) (http.Response, error) {
 	httpReq, err := http.NewRequest("POST", c.cfg.Url, bytes.NewReader(req))
 	if err != nil {
 		return http.Response{}, err
@@ -132,7 +156,7 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (http.R
 	if err != nil {
 		return http.Response{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, duration)
+	ctx, cancel := context.WithTimeout(c.core.GetContext(), duration)
 	defer cancel()
 
 	httpReq = httpReq.WithContext(ctx)
@@ -151,7 +175,7 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (http.R
 		Samples: []stats.Sample{
 			{
 				Time:   now,
-				Metric: metrics.DataSent,
+				Metric: state.BuiltinMetrics.DataSent,
 				Value:  float64(binary.Size(req)),
 			},
 		},
@@ -182,11 +206,11 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (http.R
 	return *httpResp, err
 }
 
-func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
-	var labels []prompb.Label
+func FromTimeseriesToPrometheusTimeseries(ts Timeseries) *prompb.TimeSeries {
+	var labels []*prompb.Label
 	var samples []prompb.Sample
 	for _, label := range ts.Labels {
-		labels = append(labels, prompb.Label{
+		labels = append(labels, &prompb.Label{
 			Name:  label.Name,
 			Value: label.Value,
 		})
@@ -201,7 +225,7 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 		})
 	}
 
-	return prompb.TimeSeries{
+	return &prompb.TimeSeries{
 		Labels:  labels,
 		Samples: samples,
 	}
