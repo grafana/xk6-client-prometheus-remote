@@ -14,7 +14,7 @@ export let options = {
 };
 
 const client = new remote.Client({
-    url: "https://12340:eyJrIjoiZGM4YTI5MjQ5NmY1MDM4OGNmZTViNjk2ZWNjYjgzZDM1YTY2MDEyMCIsIm4iOiJHcmFmYW5hIENsb3VkIE1ldHJpY3MgUHVibGlzaCBTdGFnaW5nIiwiaWQiOjM5NzU0NX0=@prometheus-us-central1.grafana.net/api/prom/push"
+    url: "<remote-write-URL>"
 });
 
 export default function () {
