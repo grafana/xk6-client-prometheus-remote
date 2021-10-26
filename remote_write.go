@@ -17,9 +17,7 @@ import (
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/netext/httpext"
-	"go.k6.io/k6/stats"
 )
 
 // Register the extension on module initialization, available to
@@ -110,7 +108,7 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, 
 // and encoded bytes
 func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpext.Response, error) {
 	httpResp := httpext.NewResponse(ctx)
-	r, err := http.NewRequest("POST", c.cfg.Url, bytes.NewReader(req))
+	r, err := http.NewRequest("POST", c.cfg.Url, nil)
 	if err != nil {
 		return *httpResp, err
 	}
@@ -134,21 +132,17 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpex
 
 	url, _ := httpext.NewURL(c.cfg.Url, u.Host+u.Path)
 	response, err := httpext.MakeRequest(ctx, &httpext.ParsedHTTPRequest{
-		URL:     &url,
-		Req:     r,
-		Timeout: duration,
+		URL:       &url,
+		Req:       r,
+		Body:      bytes.NewBuffer(req),
+		Throw:     state.Options.Throw.Bool,
+		Redirects: state.Options.MaxRedirects,
+		Timeout:   duration,
 	})
-
 	if err != nil {
 		return *httpResp, err
 	}
-	if response.Status != http.StatusOK {
-		stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
-			Metric: metrics.HTTPReqFailed,
-			Time:   time.Now(),
-			Value:  float64(1),
-		})
-	}
+
 	return *response, err
 }
 
