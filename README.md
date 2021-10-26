@@ -54,7 +54,7 @@ export default function () {
         ]
     }]);
     check(res, {
-        'is status 200': (r) => r.status_code === 200,
+        'is status 200': (r) => r.status === 200,
     });
     sleep(1)
 }
@@ -84,15 +84,20 @@ default ✓ [======================================] 10 VUs  10s
 
      ✓ is status 200
 
-     checks......................: 100.00% ✓ 90       ✗ 0   
-     data_received...............: 0 B     0 B/s
-     data_sent...................: 6.2 kB  596 B/s
-     iteration_duration..........: avg=1.14s    min=1.13s med=1.13s max=1.26s p(90)=1.23s p(95)=1.24s  
-     iterations..................: 90      8.624555/s
-     remote_write_num_series.....: 90      8.624555/s
-     remote_write_req_duration...: avg=146.62ms min=129ms med=132ms max=260ms p(90)=231ms p(95)=242.1ms
-     remote_write_reqs...........: 90      8.624555/s
-     vus.........................: 10      min=10     max=10
-     vus_max.....................: 10      min=10     max=10
+     checks.....................: 100.00% ✓ 90       ✗ 0   
+     data_received..............: 46 kB   4.4 kB/s
+     data_sent..................: 24 kB   2.3 kB/s
+     http_req_blocked...........: avg=7.52ms   min=290ns    med=380ns    max=68.08ms  p(90)=67.2ms   p(95)=67.7ms  
+     http_req_connecting........: avg=1.88ms   min=0s       med=0s       max=18.27ms  p(90)=15.25ms  p(95)=17.11ms 
+     http_req_duration..........: avg=136.88ms min=131.24ms med=135.66ms max=215.49ms p(90)=139.2ms  p(95)=140.72ms
+     http_req_receiving.........: avg=42.9µs   min=22µs     med=40.65µs  max=86.74µs  p(90)=57.7µs   p(95)=64.26µs 
+     http_req_sending...........: avg=68.74µs  min=38.42µs  med=61.17µs  max=144.06µs p(90)=102.71µs p(95)=113.75µs
+     http_req_tls_handshaking...: avg=3.8ms    min=0s       med=0s       max=35.93ms  p(90)=32.92ms  p(95)=34.2ms  
+     http_req_waiting...........: avg=136.76ms min=131.07ms med=135.56ms max=215.35ms p(90)=139.09ms p(95)=140.63ms
+     http_reqs..................: 90      8.650581/s
+     iteration_duration.........: avg=1.14s    min=1.13s    med=1.13s    max=1.28s    p(90)=1.2s     p(95)=1.2s    
+     iterations.................: 90      8.650581/s
+     vus........................: 10      min=10     max=10
+     vus_max....................: 10      min=10     max=10
 ```
 Inspect examples folder for more details.

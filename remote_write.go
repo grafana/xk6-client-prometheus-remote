@@ -3,10 +3,10 @@ package remotewrite
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -17,9 +17,7 @@ import (
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/metrics"
-	"go.k6.io/k6/lib/netext"
-	"go.k6.io/k6/stats"
+	"go.k6.io/k6/lib/netext/httpext"
 )
 
 // Register the extension on module initialization, available to
@@ -75,7 +73,7 @@ type Timeseries struct {
 	} `json:"samples"`
 }
 
-func (c *Client) Store(ctx context.Context, ts []Timeseries) (http.Response, error) {
+func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, error) {
 	var batch []prompb.TimeSeries
 	for _, t := range ts {
 		batch = append(batch, FromTimeseriesToPrometheusTimeseries(t))
@@ -84,15 +82,8 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (http.Response, err
 	// Required for k6 metrics
 	state := lib.GetState(ctx)
 	if state == nil {
-		return http.Response{}, errors.New("State is nil")
+		return *httpext.NewResponse(ctx), errors.New("State is nil")
 	}
-
-	now := time.Now()
-	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
-		Metric: RemoteWriteNumSeries,
-		Time:   now,
-		Value:  float64(len(batch)),
-	})
 
 	req := prompb.WriteRequest{
 		Timeseries: batch,
@@ -100,14 +91,14 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (http.Response, err
 
 	data, err := proto.Marshal(&req)
 	if err != nil {
-		return http.Response{}, errors.Wrap(err, "failed to marshal remote-write request")
+		return *httpext.NewResponse(ctx), errors.Wrap(err, "failed to marshal remote-write request")
 	}
 
 	compressed := snappy.Encode(nil, data)
 
 	res, err := c.send(ctx, state, compressed)
 	if err != nil {
-		return http.Response{}, errors.Wrap(err, "remote-write request failed")
+		return *httpext.NewResponse(ctx), errors.Wrap(err, "remote-write request failed")
 	}
 
 	return res, nil
@@ -115,71 +106,42 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (http.Response, err
 
 // send sends a batch of samples to the HTTP endpoint, the request is the proto marshalled
 // and encoded bytes
-func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (http.Response, error) {
-	httpReq, err := http.NewRequest("POST", c.cfg.Url, bytes.NewReader(req))
+func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpext.Response, error) {
+	httpResp := httpext.NewResponse(ctx)
+	r, err := http.NewRequest("POST", c.cfg.Url, bytes.NewReader(req))
 	if err != nil {
-		return http.Response{}, err
+		return *httpResp, err
 	}
-	httpReq.Header.Add("Content-Encoding", "snappy")
-	httpReq.Header.Set("Content-Type", "application/x-protobuf")
-	httpReq.Header.Set("User-Agent", c.cfg.UserAgent)
-	httpReq.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
+	r.Header.Add("Content-Encoding", "snappy")
+	r.Header.Set("Content-Type", "application/x-protobuf")
+	r.Header.Set("User-Agent", c.cfg.UserAgent)
+	r.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
 	if c.cfg.TenantName != "" {
-		httpReq.Header.Set("X-Scope-OrgID", c.cfg.TenantName)
+		r.Header.Set("X-Scope-OrgID", c.cfg.TenantName)
 	}
 
 	duration, err := str2duration.ParseDuration(c.cfg.Timeout)
 	if err != nil {
-		return http.Response{}, err
+		return *httpResp, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, duration)
-	defer cancel()
 
-	httpReq = httpReq.WithContext(ctx)
-	now := time.Now()
-
-	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
-		Metric: RemoteWriteReqs,
-		Time:   now,
-		Value:  float64(1),
-	})
-
-	simpleNetTrail := netext.NetTrail{
-		BytesWritten: int64(binary.Size(req)),
-		StartTime:    now.Add(-time.Minute),
-		EndTime:      now,
-		Samples: []stats.Sample{
-			{
-				Time:   now,
-				Metric: metrics.DataSent,
-				Value:  float64(binary.Size(req)),
-			},
-		},
-	}
-	stats.PushIfNotDone(ctx, state.Samples, &simpleNetTrail)
-
-	start := time.Now()
-	httpResp, err := c.client.Do(httpReq)
-	elapsed := time.Since(start)
+	u, err := url.Parse(c.cfg.Url)
 	if err != nil {
-		return http.Response{}, err
+		return *httpResp, err
 	}
 
-	stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
-		Metric: RemoteWriteReqDuration,
-		Time:   now,
-		Value:  float64(elapsed.Milliseconds()),
+	url, _ := httpext.NewURL(c.cfg.Url, u.Host+u.Path)
+	response, err := httpext.MakeRequest(ctx, &httpext.ParsedHTTPRequest{
+		URL:     &url,
+		Req:     r,
+		Timeout: duration,
 	})
 
-	if httpResp.StatusCode != http.StatusOK {
-		stats.PushIfNotDone(ctx, state.Samples, stats.Sample{
-			Metric: RemoteWriteReqFailed,
-			Time:   now,
-			Value:  float64(1),
-		})
+	if err != nil {
+		return *httpResp, err
 	}
 
-	return *httpResp, err
+	return *response, err
 }
 
 func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
