@@ -132,18 +132,23 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpex
 
 	url, _ := httpext.NewURL(c.cfg.Url, u.Host+u.Path)
 	response, err := httpext.MakeRequest(ctx, &httpext.ParsedHTTPRequest{
-		URL:       &url,
-		Req:       r,
-		Body:      bytes.NewBuffer(req),
-		Throw:     state.Options.Throw.Bool,
-		Redirects: state.Options.MaxRedirects,
-		Timeout:   duration,
+		URL:              &url,
+		Req:              r,
+		Body:             bytes.NewBuffer(req),
+		Throw:            state.Options.Throw.Bool,
+		Redirects:        state.Options.MaxRedirects,
+		Timeout:          duration,
+		ResponseCallback: ResponseCallback,
 	})
 	if err != nil {
 		return *httpResp, err
 	}
 
 	return *response, err
+}
+
+func ResponseCallback(n int) bool {
+	return n == 200
 }
 
 func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
