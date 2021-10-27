@@ -26,7 +26,7 @@ func init() {
 	modules.Register("k6/x/remotewrite", new(RemoteWrite))
 }
 
-// RemoteWrite is the k6 extension for interacting with Kubernetes jobs.
+// RemoteWrite is the k6 extension for interacting Prometheus Remote Write endpoints.
 type RemoteWrite struct {
 }
 
@@ -49,7 +49,7 @@ func (r *RemoteWrite) XClient(ctxPtr *context.Context, config Config) interface{
 		log.Fatal(fmt.Errorf("url is required"))
 	}
 	if config.UserAgent == "" {
-		config.UserAgent = "k6-remote-write/0.0.1"
+		config.UserAgent = "k6-remote-write/0.0.2"
 	}
 	if config.Timeout == "" {
 		config.Timeout = "10s"
@@ -115,7 +115,7 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpex
 	r.Header.Add("Content-Encoding", "snappy")
 	r.Header.Set("Content-Type", "application/x-protobuf")
 	r.Header.Set("User-Agent", c.cfg.UserAgent)
-	r.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
+	r.Header.Set("X-Prometheus-Remote-Write-Version", "0.0.2")
 	if c.cfg.TenantName != "" {
 		r.Header.Set("X-Scope-OrgID", c.cfg.TenantName)
 	}
