@@ -32,7 +32,7 @@ export default function () {
         "samples": generateEmptySamples(1000)
     }]);
     check(res, {
-        'is status 200': (r) => r.status_code === 200,
+        'is status 200': (r) => r.status === 200,
     });
     sleep(0.15);
 }

@@ -36,7 +36,7 @@ export function increaseCounter() {
     },
     ]);
     check(res, {
-        'is status 200': (r) => r.status_code === 200,
+        'is status 200': (r) => r.status === 200,
     });
     sleep(10);
 }
@@ -61,7 +61,7 @@ export function sendBatch() {
     }
     ]);
     check(res, {
-        'is status 200': (r) => r.status_code === 200,
+        'is status 200': (r) => r.status === 200,
     });
     sleep(1)
 }

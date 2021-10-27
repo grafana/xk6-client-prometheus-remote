@@ -3,14 +3,7 @@ import remote from 'k6/x/remotewrite';
 
 export let options = {
     vus: 10,
-    duration: '5m',
-    ext: {
-        loadimpact: {
-          projectID: 3183896,
-          // Test runs with the same name groups test runs together
-          name: "Prometheus Remote Write Client"
-        }
-      }
+    duration: '10s',
 };
 
 const client = new remote.Client({
@@ -28,7 +21,7 @@ export default function () {
         ]
     }]);
     check(res, {
-        'is status 200': (r) => r.status_code === 200,
+        'is status 200': (r) => r.status === 200,
     });
     sleep(1)
 }

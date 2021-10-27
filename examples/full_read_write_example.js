@@ -69,7 +69,7 @@ export function write_scenario() {
   );
 
   check(res, {
-    'write worked': (r) => r.status_code === 200,
+    'write worked': (r) => r.status === 200,
   }) || fail(JSON.stringify(res));
 }
 
