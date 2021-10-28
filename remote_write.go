@@ -122,6 +122,7 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, 
 	if err != nil {
 		return *httpext.NewResponse(ctx), errors.Wrap(err, "remote-write request failed")
 	}
+	res.Request.Body = ""
 
 	return res, nil
 }
