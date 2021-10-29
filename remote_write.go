@@ -27,8 +27,7 @@ func init() {
 }
 
 // RemoteWrite is the k6 extension for interacting Prometheus Remote Write endpoints.
-type RemoteWrite struct {
-}
+type RemoteWrite struct{}
 
 // Client is the client wrapper.
 type Client struct {
@@ -63,14 +62,37 @@ func (r *RemoteWrite) XClient(ctxPtr *context.Context, config Config) interface{
 }
 
 type Timeseries struct {
-	Labels []struct {
-		Name  string `json:"name"`
-		Value string `json:"value"`
-	} `json:"labels"`
-	Samples []struct {
-		Value     float64 `json:"value"`
-		Timestamp int64   `json:"timestamp"`
-	} `json:"samples"`
+	Labels  []Label
+	Samples []Sample
+}
+
+type Label struct {
+	Name, Value string
+}
+
+type Sample struct {
+	Value     float64
+	Timestamp int64
+}
+
+func (r *RemoteWrite) XSample(value float64, timestamp int64) Sample {
+	return Sample{
+		Value:     value,
+		Timestamp: timestamp,
+	}
+}
+
+func (r *RemoteWrite) XTimeseries(labels map[string]string, samples []Sample) *Timeseries {
+	t := &Timeseries{
+		Labels:  make([]Label, 0, len(labels)),
+		Samples: samples,
+	}
+
+	for k, v := range labels {
+		t.Labels = append(t.Labels, Label{Name: k, Value: v})
+	}
+
+	return t
 }
 
 func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, error) {
@@ -100,6 +122,7 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, 
 	if err != nil {
 		return *httpext.NewResponse(ctx), errors.Wrap(err, "remote-write request failed")
 	}
+	res.Request.Body = ""
 
 	return res, nil
 }
