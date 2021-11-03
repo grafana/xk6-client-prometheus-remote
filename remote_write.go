@@ -5,8 +5,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -93,6 +96,56 @@ func (r *RemoteWrite) XTimeseries(labels map[string]string, samples []Sample) *T
 	}
 
 	return t
+}
+
+func (c *Client) StoreGenerated(ctx context.Context, total_series, batches, batch_size, batch int64) (httpext.Response, error) {
+	ts, err := generate_series(total_series, batches, batch_size, batch)
+	if err != nil {
+		return nil, err
+	}
+	return c.Store(ctx, ts)
+}
+
+func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseries, error) {
+	if total_series == 0 {
+		return nil, nil
+	}
+	if batch > batches {
+		return nil, errors.New("batch must be in the range of batches")
+	}
+	if total_series/batches != batch_size {
+		return nil, errors.New("total_series must divide evenly into batches of size batch_size")
+	}
+
+	series := make([]Timeseries, 0, batch_size)
+	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
+	for i := int64(0); i < batch_size; i++ {
+		series_id := batch_size*(batch-1) + i
+		labels := generate_cardinality_labels(total_series, series_id)
+		labels = append(labels, Label{
+			Name:  "__name__",
+			Value: "k6_generated_metric_" + strconv.Itoa(int(series_id)),
+		})
+		series[i] = Timeseries{
+			labels,
+			[]Sample{{rand.Float64() * 100, timestamp}},
+		}
+	}
+
+	return series, nil
+}
+
+func generate_cardinality_labels(total_series, series_id int64) []Label {
+	// exp is the greatest exponent of 10 that is less than total series.
+	exp := int64(math.Log10(2000))
+	labels := make([]Label, 0, exp)
+	for x := 1; int64(x) <= exp; x++ {
+		labels = append(labels, Label{
+			Name:  "cardinality_1e%d" + strconv.Itoa(x),
+			Value: strconv.Itoa(int(series_id / int64(math.Pow(10, float64(x))))),
+		})
+	}
+	return labels
 }
 
 func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, error) {
