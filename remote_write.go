@@ -117,7 +117,7 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 		return nil, errors.New("total_series must divide evenly into batches of size batch_size")
 	}
 
-	series := make([]Timeseries, 0, batch_size)
+	series := make([]Timeseries, batch_size)
 	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
 	for i := int64(0); i < batch_size; i++ {
 		series_id := batch_size*(batch-1) + i
