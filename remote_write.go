@@ -101,7 +101,7 @@ func (r *RemoteWrite) XTimeseries(labels map[string]string, samples []Sample) *T
 func (c *Client) StoreGenerated(ctx context.Context, total_series, batches, batch_size, batch int64) (httpext.Response, error) {
 	ts, err := generate_series(total_series, batches, batch_size, batch)
 	if err != nil {
-		return nil, err
+		return *httpext.NewResponse(ctx), err
 	}
 	return c.Store(ctx, ts)
 }
