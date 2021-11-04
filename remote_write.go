@@ -141,7 +141,7 @@ func generate_cardinality_labels(total_series, series_id int64) []Label {
 	labels := make([]Label, 0, exp)
 	for x := 1; int64(x) <= exp; x++ {
 		labels = append(labels, Label{
-			Name:  "cardinality_1e%d" + strconv.Itoa(x),
+			Name:  "cardinality_1e" + strconv.Itoa(x),
 			Value: strconv.Itoa(int(series_id / int64(math.Pow(10, float64(x))))),
 		})
 	}
