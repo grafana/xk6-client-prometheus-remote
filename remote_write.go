@@ -126,6 +126,13 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 			Name:  "__name__",
 			Value: "k6_generated_metric_" + strconv.Itoa(int(series_id)),
 		})
+
+		// Required for querying in order to have unique series excluding the metric name.
+		labels = append(labels, Label{
+			Name:  "series_id",
+			Value: strconv.Itoa(int(series_id)),
+		})
+
 		series[i] = Timeseries{
 			labels,
 			[]Sample{{rand.Float64() * 100, timestamp}},
