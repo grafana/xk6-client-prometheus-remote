@@ -191,6 +191,8 @@ func (c *Client) StorePreGenerated(ctx context.Context, minValue, maxValue float
 			break
 		}
 
+		timeSeries[seriesIdx].Labels = c.preGeneratedLabelSets[seriesIdxBatched]
+
 		if len(timeSeries[seriesIdx].Samples) != 1 {
 			timeSeries[seriesIdx].Samples = make([]prompb.Sample, 1)
 		}
