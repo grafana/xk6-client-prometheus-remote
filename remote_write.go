@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -23,10 +24,17 @@ import (
 	"go.k6.io/k6/lib/netext/httpext"
 )
 
+var timeSeriesPool sync.Pool
+
 // Register the extension on module initialization, available to
 // import from JS as "k6/x/remotewrite".
 func init() {
 	modules.Register("k6/x/remotewrite", new(RemoteWrite))
+	timeSeriesPool = sync.Pool{
+		New: func() interface{} {
+			return []prompb.TimeSeries{}
+		},
+	}
 }
 
 // RemoteWrite is the k6 extension for interacting Prometheus Remote Write endpoints.
@@ -37,7 +45,7 @@ type Client struct {
 	client *http.Client
 	cfg    *Config
 
-	preGeneratedSeries []prompb.TimeSeries
+	preGeneratedLabelSets [][]prompb.Label
 }
 
 type Config struct {
@@ -140,12 +148,9 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, 
 }
 
 func (c *Client) SetPreGeneratedLabelSets(ctx context.Context, labelSets []map[string]string) {
-	c.preGeneratedSeries = make([]prompb.TimeSeries, len(labelSets))
+	c.preGeneratedLabelSets = make([][]prompb.Label, len(labelSets))
 	for labelSetIdx := range labelSets {
-		c.preGeneratedSeries[labelSetIdx] = prompb.TimeSeries{
-			Labels:  labelMapToPromPb(labelSets[labelSetIdx]),
-			Samples: []prompb.Sample{{}}, // Sample 0 will be set in StorePreGenerated()
-		}
+		c.preGeneratedLabelSets[labelSetIdx] = labelMapToPromPb(labelSets[labelSetIdx])
 	}
 }
 
@@ -172,26 +177,36 @@ func (c *Client) StorePreGenerated(ctx context.Context, minValue, maxValue float
 		return *httpext.NewResponse(ctx), errors.New("State is nil")
 	}
 
-	batch_start := lower(batch_id*batch_size, int64(len(c.preGeneratedSeries)))
-	for seriesIdx := int64(0); seriesIdx < batch_size; seriesIdx++ {
-		seriesIdxBatched := batch_start + seriesIdx
-		if seriesIdxBatched >= int64(len(c.preGeneratedSeries)) {
-			break
-		}
-		c.preGeneratedSeries[seriesIdxBatched].Samples[0].Timestamp = timestamp
-		c.preGeneratedSeries[seriesIdxBatched].Samples[0].Value = minValue + (rand.Float64() * (maxValue - minValue))
+	timeSeries := timeSeriesPool.Get().([]prompb.TimeSeries)
+	if int64(len(timeSeries)) != batch_size {
+		// Ensure that timeSeries have a fixed len and cap of batch_size
+		timeSeries = make([]prompb.TimeSeries, batch_size)
 	}
 
-	batch_end := lower(batch_start+batch_size, int64(len(c.preGeneratedSeries)))
-	req := prompb.WriteRequest{Timeseries: c.preGeneratedSeries[batch_start:batch_end]}
-	data, err := proto.Marshal(&req)
+	batch_start := (batch_id * batch_size) % int64(len(c.preGeneratedLabelSets))
+	for seriesIdx := range timeSeries {
+		seriesIdxBatched := batch_start + int64(seriesIdx)
+		if seriesIdxBatched >= int64(len(c.preGeneratedLabelSets)) {
+			timeSeries = timeSeries[:seriesIdx+1]
+			break
+		}
+
+		if len(timeSeries[seriesIdx].Samples) != 1 {
+			timeSeries[seriesIdx].Samples = make([]prompb.Sample, 1)
+		}
+		timeSeries[seriesIdx].Samples[0].Timestamp = timestamp
+		timeSeries[seriesIdx].Samples[0].Value = minValue + (rand.Float64() * (maxValue - minValue))
+	}
+
+	data, err := proto.Marshal(&prompb.WriteRequest{Timeseries: timeSeries})
 	if err != nil {
 		return *httpext.NewResponse(ctx), errors.Wrap(err, "failed to marshal remote-write request")
 	}
 
-	compressed := snappy.Encode(nil, data)
+	// If len of timeSeries has been reduced then we set it back to the original len&cap
+	timeSeriesPool.Put(timeSeries[:batch_size])
 
-	res, err := c.send(ctx, state, compressed)
+	res, err := c.send(ctx, state, snappy.Encode(nil, data))
 	if err != nil {
 		return *httpext.NewResponse(ctx), errors.Wrap(err, "remote-write request failed")
 	}
