@@ -5,8 +5,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -33,6 +36,8 @@ type RemoteWrite struct{}
 type Client struct {
 	client *http.Client
 	cfg    *Config
+
+	preGeneratedSeries []prompb.TimeSeries
 }
 
 type Config struct {
@@ -95,6 +100,13 @@ func (r *RemoteWrite) XTimeseries(labels map[string]string, samples []Sample) *T
 	return t
 }
 
+func (r *RemoteWrite) XPromPbLabel(name, value string) prompb.Label {
+	return prompb.Label{
+		Name:  name,
+		Value: value,
+	}
+}
+
 func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, error) {
 	var batch []prompb.TimeSeries
 	for _, t := range ts {
@@ -125,6 +137,124 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, 
 	res.Request.Body = ""
 
 	return res, nil
+}
+
+func (c *Client) SetPreGeneratedLabelSets(ctx context.Context, labelSets []map[string]string) {
+	c.preGeneratedSeries = make([]prompb.TimeSeries, len(labelSets))
+	for labelSetIdx := range labelSets {
+		c.preGeneratedSeries[labelSetIdx] = prompb.TimeSeries{
+			Labels:  labelMapToPromPb(labelSets[labelSetIdx]),
+			Samples: []prompb.Sample{{}}, // Sample 0 will be set in StorePreGenerated()
+		}
+	}
+}
+
+func labelMapToPromPb(labelsIn map[string]string) []prompb.Label {
+	labelsOut := make([]prompb.Label, 0, len(labelsIn))
+	for label, value := range labelsIn {
+		labelsOut = append(labelsOut, prompb.Label{Name: label, Value: value})
+	}
+	return labelsOut
+}
+
+// lower takes two numbers and returns the lower one of the two
+func lower(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func (c *Client) StorePreGenerated(ctx context.Context, minValue, maxValue float64, timestamp, batch_size, batch_id int64) (httpext.Response, error) {
+	// Required for k6 metrics
+	state := lib.GetState(ctx)
+	if state == nil {
+		return *httpext.NewResponse(ctx), errors.New("State is nil")
+	}
+
+	batch_start := lower(batch_id*batch_size, int64(len(c.preGeneratedSeries)))
+	for seriesIdx := int64(0); seriesIdx < batch_size; seriesIdx++ {
+		seriesIdxBatched := batch_start + seriesIdx
+		if seriesIdxBatched >= int64(len(c.preGeneratedSeries)) {
+			break
+		}
+		c.preGeneratedSeries[seriesIdxBatched].Samples[0].Timestamp = timestamp
+		c.preGeneratedSeries[seriesIdxBatched].Samples[0].Value = minValue + (rand.Float64() * (maxValue - minValue))
+	}
+
+	batch_end := lower(batch_start+batch_size, int64(len(c.preGeneratedSeries)))
+	req := prompb.WriteRequest{Timeseries: c.preGeneratedSeries[batch_start:batch_end]}
+	data, err := proto.Marshal(&req)
+	if err != nil {
+		return *httpext.NewResponse(ctx), errors.Wrap(err, "failed to marshal remote-write request")
+	}
+
+	compressed := snappy.Encode(nil, data)
+
+	res, err := c.send(ctx, state, compressed)
+	if err != nil {
+		return *httpext.NewResponse(ctx), errors.Wrap(err, "remote-write request failed")
+	}
+	res.Request.Body = ""
+
+	return res, nil
+}
+
+func (c *Client) StoreGenerated(ctx context.Context, total_series, batches, batch_size, batch int64) (httpext.Response, error) {
+	ts, err := generate_series(total_series, batches, batch_size, batch)
+	if err != nil {
+		return *httpext.NewResponse(ctx), err
+	}
+	return c.Store(ctx, ts)
+}
+
+func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseries, error) {
+	if total_series == 0 {
+		return nil, nil
+	}
+	if batch > batches {
+		return nil, errors.New("batch must be in the range of batches")
+	}
+	if total_series/batches != batch_size {
+		return nil, errors.New("total_series must divide evenly into batches of size batch_size")
+	}
+
+	series := make([]Timeseries, batch_size)
+	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
+	for i := int64(0); i < batch_size; i++ {
+		series_id := batch_size*(batch-1) + i
+		labels := generate_cardinality_labels(total_series, series_id)
+		labels = append(labels, Label{
+			Name:  "__name__",
+			Value: "k6_generated_metric_" + strconv.Itoa(int(series_id)),
+		})
+
+		// Required for querying in order to have unique series excluding the metric name.
+		labels = append(labels, Label{
+			Name:  "series_id",
+			Value: strconv.Itoa(int(series_id)),
+		})
+
+		series[i] = Timeseries{
+			labels,
+			[]Sample{{rand.Float64() * 100, timestamp}},
+		}
+	}
+
+	return series, nil
+}
+
+func generate_cardinality_labels(total_series, series_id int64) []Label {
+	// exp is the greatest exponent of 10 that is less than total series.
+	exp := int64(math.Log10(2000))
+	labels := make([]Label, 0, exp)
+	for x := 1; int64(x) <= exp; x++ {
+		labels = append(labels, Label{
+			Name:  "cardinality_1e" + strconv.Itoa(x),
+			Value: strconv.Itoa(int(series_id / int64(math.Pow(10, float64(x))))),
+		})
+	}
+	return labels
 }
 
 // send sends a batch of samples to the HTTP endpoint, the request is the proto marshalled
