@@ -45,7 +45,8 @@ type Client struct {
 	client *http.Client
 	cfg    *Config
 
-	preGeneratedLabelSets [][]prompb.Label
+	preGeneratedLabelSets [][][]prompb.Label
+	currentBatch          int
 }
 
 type Config struct {
@@ -147,10 +148,14 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, 
 	return res, nil
 }
 
-func (c *Client) SetPreGeneratedLabelSets(ctx context.Context, labelSets []map[string]string) {
-	c.preGeneratedLabelSets = make([][]prompb.Label, len(labelSets))
-	for labelSetIdx := range labelSets {
-		c.preGeneratedLabelSets[labelSetIdx] = labelMapToPromPb(labelSets[labelSetIdx])
+func (c *Client) SetPreGeneratedLabelSets(ctx context.Context, labelSets [][]map[string]string) {
+	c.preGeneratedLabelSets = make([][][]prompb.Label, len(labelSets))
+
+	for batchId, batch := range labelSets {
+		c.preGeneratedLabelSets[batchId] = make([][]prompb.Label, len(batch))
+		for labelSetIdx, labelSet := range batch {
+			c.preGeneratedLabelSets[batchId][labelSetIdx] = labelMapToPromPb(labelSet)
+		}
 	}
 }
 
@@ -170,29 +175,27 @@ func lower(a, b int64) int64 {
 	return b
 }
 
-func (c *Client) StorePreGenerated(ctx context.Context, minValue, maxValue float64, timestamp, batch_size, batch_id int64) (httpext.Response, error) {
+func (c *Client) StorePreGenerated(ctx context.Context, minValue, maxValue float64, timestamp int64) (httpext.Response, error) {
 	// Required for k6 metrics
 	state := lib.GetState(ctx)
 	if state == nil {
 		return *httpext.NewResponse(ctx), errors.New("State is nil")
 	}
 
+	batchSize := len(c.preGeneratedLabelSets[c.currentBatch])
 	timeSeries := timeSeriesPool.Get().([]prompb.TimeSeries)
-	if int64(len(timeSeries)) != batch_size {
-		// Ensure that timeSeries have a fixed len and cap of batch_size
-		timeSeries = make([]prompb.TimeSeries, batch_size)
+	if len(timeSeries) < batchSize {
+		if cap(timeSeries) < batchSize {
+			timeSeries = make([]prompb.TimeSeries, batchSize)
+		} else {
+			timeSeries = timeSeries[:batchSize]
+		}
+	} else if len(timeSeries) > batchSize {
+		timeSeries = timeSeries[:batchSize]
 	}
 
-	batch_start := (batch_id * batch_size) % int64(len(c.preGeneratedLabelSets))
-	for seriesIdx := range timeSeries {
-		seriesIdxBatched := batch_start + int64(seriesIdx)
-		if seriesIdxBatched >= int64(len(c.preGeneratedLabelSets)) {
-			timeSeries = timeSeries[:seriesIdx+1]
-			break
-		}
-
-		timeSeries[seriesIdx].Labels = c.preGeneratedLabelSets[seriesIdxBatched]
-
+	for seriesIdx, labelSet := range c.preGeneratedLabelSets[c.currentBatch] {
+		timeSeries[seriesIdx].Labels = labelSet
 		if len(timeSeries[seriesIdx].Samples) != 1 {
 			timeSeries[seriesIdx].Samples = make([]prompb.Sample, 1)
 		}
@@ -205,8 +208,8 @@ func (c *Client) StorePreGenerated(ctx context.Context, minValue, maxValue float
 		return *httpext.NewResponse(ctx), errors.Wrap(err, "failed to marshal remote-write request")
 	}
 
-	// If len of timeSeries has been reduced then we set it back to the original len&cap
-	timeSeriesPool.Put(timeSeries[:batch_size])
+	timeSeriesPool.Put(timeSeries)
+	c.currentBatch = (c.currentBatch + 1) % len(c.preGeneratedLabelSets)
 
 	res, err := c.send(ctx, state, snappy.Encode(nil, data))
 	if err != nil {
