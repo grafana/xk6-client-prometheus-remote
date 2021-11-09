@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -257,4 +258,56 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 		Labels:  labels,
 		Samples: samples,
 	}
+}
+
+// The only supported things are:
+// 1. replacing ${series_id} with the series_id provided
+// 2. replacing ${series_id/<integer>} with the evaluation of that
+func evaluateTemplate(template string, seriesID int) string {
+	i := strings.Index(template, "${series_id")
+	if i == -1 {
+		return template
+	}
+	switch template[i+len("${series_id")] {
+	case '}':
+		return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
+	case '/':
+		end := strings.Index(template[i:], "}")
+		if end == -1 {
+			return template // TODO error
+		}
+		d, err := strconv.Atoi(template[i+len("${series_id/") : i+end])
+		if err != nil {
+			return template
+		}
+		return template[:i] + strconv.Itoa(seriesID/d) + template[i+end+1:]
+	}
+	// TODO error out when this get precompiled/optimized
+	return template
+}
+
+func (c *Client) StoreFromTemplates(
+	ctx context.Context, minValue, maxValue int,
+	timestamp int64, minSeriesID, maxSeriesID int,
+	labelsTemplate map[string]string,
+) (httpext.Response, error) {
+	batch_size := maxSeriesID - minSeriesID
+	series := make([]Timeseries, batch_size)
+
+	for series_id := minSeriesID; series_id < maxSeriesID; series_id++ {
+		labels := make([]Label, len(labelsTemplate))
+		// TODO optimize
+		i := 0
+		for k, v := range labelsTemplate {
+			labels[i] = Label{Name: k, Value: evaluateTemplate(v, series_id)}
+			i++
+		}
+
+		series[series_id-minSeriesID] = Timeseries{
+			labels,
+			[]Sample{{(rand.Float64() * float64(maxValue-minValue)) + float64(minValue), timestamp}},
+		}
+	}
+
+	return c.Store(ctx, series)
 }
