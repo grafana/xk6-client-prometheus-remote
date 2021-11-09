@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -135,7 +134,7 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 
 		series[i] = Timeseries{
 			labels,
-			[]Sample{{rand.Float64() * 100, timestamp}},
+			[]Sample{{float64(timestamp / 1000), timestamp}},
 		}
 	}
 
