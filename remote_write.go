@@ -295,11 +295,10 @@ func compileTemplate(template string) func(int) string {
 	return func(_ int) string { return template }
 }
 
-func (c *Client) StoreFromTemplates(
-	ctx context.Context, minValue, maxValue int,
+func generateFromTemplates(minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
 	labelsTemplate map[string]string,
-) (httpext.Response, error) {
+) []prompb.TimeSeries {
 	batchSize := maxSeriesID - minSeriesID
 	series := make([]prompb.TimeSeries, batchSize)
 
@@ -333,5 +332,13 @@ func (c *Client) StoreFromTemplates(
 		}
 	}
 
-	return c.store(ctx, series)
+	return series
+}
+
+func (c *Client) StoreFromTemplates(
+	ctx context.Context, minValue, maxValue int,
+	timestamp int64, minSeriesID, maxSeriesID int,
+	labelsTemplate map[string]string,
+) (httpext.Response, error) {
+	return c.store(ctx, generateFromTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, labelsTemplate))
 }
