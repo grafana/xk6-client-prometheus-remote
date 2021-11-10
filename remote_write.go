@@ -145,7 +145,7 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 
 func generate_cardinality_labels(total_series, series_id int64) []Label {
 	// exp is the greatest exponent of 10 that is less than total series.
-	exp := int64(math.Log10(2000))
+	exp := int64(math.Log10(float64(total_series)))
 	labels := make([]Label, 0, exp)
 	for x := 1; int64(x) <= exp; x++ {
 		labels = append(labels, Label{
