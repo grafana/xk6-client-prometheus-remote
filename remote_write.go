@@ -161,7 +161,10 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, 
 	for _, t := range ts {
 		batch = append(batch, FromTimeseriesToPrometheusTimeseries(t))
 	}
+	return c.store(ctx, batch)
+}
 
+func (c *Client) store(ctx context.Context, batch []prompb.TimeSeries) (httpext.Response, error) {
 	// Required for k6 metrics
 	state := lib.GetState(ctx)
 	if state == nil {
@@ -291,23 +294,28 @@ func (c *Client) StoreFromTemplates(
 	timestamp int64, minSeriesID, maxSeriesID int,
 	labelsTemplate map[string]string,
 ) (httpext.Response, error) {
-	batch_size := maxSeriesID - minSeriesID
-	series := make([]Timeseries, batch_size)
+	batchSize := maxSeriesID - minSeriesID
+	series := make([]prompb.TimeSeries, batchSize)
 
-	for series_id := minSeriesID; series_id < maxSeriesID; series_id++ {
-		labels := make([]Label, len(labelsTemplate))
+	for seriesID := minSeriesID; seriesID < maxSeriesID; seriesID++ {
+		labels := make([]prompb.Label, len(labelsTemplate))
 		// TODO optimize
 		i := 0
 		for k, v := range labelsTemplate {
-			labels[i] = Label{Name: k, Value: evaluateTemplate(v, series_id)}
+			labels[i] = prompb.Label{Name: k, Value: evaluateTemplate(v, seriesID)}
 			i++
 		}
 
-		series[series_id-minSeriesID] = Timeseries{
-			labels,
-			[]Sample{{(rand.Float64() * float64(maxValue-minValue)) + float64(minValue), timestamp}},
+		series[seriesID-minSeriesID] = prompb.TimeSeries{
+			Labels: labels,
+			Samples: []prompb.Sample{
+				{
+					Value:     (rand.Float64() * float64(maxValue-minValue)) + float64(minValue),
+					Timestamp: timestamp,
+				},
+			},
 		}
 	}
 
-	return c.Store(ctx, series)
+	return c.store(ctx, series)
 }
