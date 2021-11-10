@@ -266,27 +266,33 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 // The only supported things are:
 // 1. replacing ${series_id} with the series_id provided
 // 2. replacing ${series_id/<integer>} with the evaluation of that
-func evaluateTemplate(template string, seriesID int) string {
+// 3. if error in parsing just return the original
+func compileTemplate(template string) func(int) string {
 	i := strings.Index(template, "${series_id")
 	if i == -1 {
-		return template
+		return func(_ int) string { return template }
 	}
 	switch template[i+len("${series_id")] {
 	case '}':
-		return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
+		return func(seriesID int) string {
+			return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
+		}
 	case '/':
 		end := strings.Index(template[i:], "}")
 		if end == -1 {
-			return template // TODO error
+			return func(_ int) string { return template }
 		}
 		d, err := strconv.Atoi(template[i+len("${series_id/") : i+end])
 		if err != nil {
-			return template
+			return func(_ int) string { return template }
 		}
-		return template[:i] + strconv.Itoa(seriesID/d) + template[i+end+1:]
+
+		return func(seriesID int) string {
+			return template[:i] + strconv.Itoa(seriesID/d) + template[i+end+1:]
+		}
 	}
 	// TODO error out when this get precompiled/optimized
-	return template
+	return func(_ int) string { return template }
 }
 
 func (c *Client) StoreFromTemplates(
@@ -297,13 +303,23 @@ func (c *Client) StoreFromTemplates(
 	batchSize := maxSeriesID - minSeriesID
 	series := make([]prompb.TimeSeries, batchSize)
 
+	compiledTemplates := make([]struct {
+		name     string
+		template func(int) string
+	}, len(labelsTemplate))
+	{
+		i := 0
+		for k, v := range labelsTemplate {
+			compiledTemplates[i].name = k
+			compiledTemplates[i].template = compileTemplate(v)
+			i++
+		}
+	}
 	for seriesID := minSeriesID; seriesID < maxSeriesID; seriesID++ {
 		labels := make([]prompb.Label, len(labelsTemplate))
 		// TODO optimize
-		i := 0
-		for k, v := range labelsTemplate {
-			labels[i] = prompb.Label{Name: k, Value: evaluateTemplate(v, seriesID)}
-			i++
+		for i, template := range compiledTemplates {
+			labels[i] = prompb.Label{Name: template.name, Value: template.template(seriesID)}
 		}
 
 		series[seriesID-minSeriesID] = prompb.TimeSeries{
