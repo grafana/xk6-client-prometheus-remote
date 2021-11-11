@@ -9,8 +9,11 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -24,10 +27,38 @@ import (
 	"go.k6.io/k6/lib/netext/httpext"
 )
 
+var debugWriter *LockedWriter
+
 // Register the extension on module initialization, available to
 // import from JS as "k6/x/remotewrite".
 func init() {
 	modules.Register("k6/x/remotewrite", new(RemoteWrite))
+
+	const debugVar = "K6_PROMETHEUS_REMOTE_WRITE_DEBUG"
+	for _, envVar := range os.Environ() {
+		if len(envVar) > len(debugVar)+1 && envVar[:len(debugVar)+1] == debugVar+"=" {
+			debugFile := envVar[len(debugVar)+1:]
+			debugWriter = &LockedWriter{file: debugFile}
+			log.Printf("--- Debug output written to %s ---", debugFile)
+		}
+	}
+}
+
+type LockedWriter struct {
+	m    sync.Mutex
+	file string
+}
+
+func (lw *LockedWriter) Write(msg string) (n int, err error) {
+	lw.m.Lock()
+	defer lw.m.Unlock()
+
+	f, err := os.OpenFile(lw.file, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	return f.WriteString(msg)
 }
 
 // RemoteWrite is the k6 extension for interacting Prometheus Remote Write endpoints.
@@ -295,12 +326,40 @@ func compileTemplate(template string) func(int) string {
 	return func(_ int) string { return template }
 }
 
+func labelsToString(labels []prompb.Label) string {
+	sort.Slice(labels, func(i, j int) bool {
+		// Should never be true.
+		if labels[i].Name == labels[j].Name {
+			return labels[i].Value < labels[j].Value
+		}
+
+		return labels[i].Name < labels[j].Name
+	})
+
+	var builder strings.Builder
+	for labelIdx, label := range labels {
+		if labelIdx > 0 {
+			builder.WriteString(";")
+		}
+		builder.WriteString(label.Name)
+		builder.WriteString("=")
+		builder.WriteString(label.Value)
+	}
+
+	return builder.String()
+}
+
 func generateFromTemplates(minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
 	labelsTemplate map[string]string,
 ) []prompb.TimeSeries {
 	batchSize := maxSeriesID - minSeriesID
 	series := make([]prompb.TimeSeries, batchSize)
+
+	var debugBuilder *strings.Builder
+	if debugWriter != nil {
+		debugBuilder = &strings.Builder{}
+	}
 
 	compiledTemplates := make([]struct {
 		name     string
@@ -329,6 +388,22 @@ func generateFromTemplates(minValue, maxValue int,
 					Timestamp: timestamp,
 				},
 			},
+		}
+
+		if debugBuilder != nil {
+			debugBuilder.WriteString(fmt.Sprintf(
+				"series: %s value: %f timestamp: %d\n",
+				labelsToString(series[seriesID-minSeriesID].Labels),
+				series[seriesID-minSeriesID].Samples[0].Value,
+				series[seriesID-minSeriesID].Samples[0].Timestamp,
+			))
+		}
+	}
+
+	if debugWriter != nil && debugBuilder != nil {
+		_, err := debugWriter.Write(debugBuilder.String())
+		if err != nil {
+			log.Fatal(err)
 		}
 	}
 
