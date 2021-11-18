@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -314,6 +315,9 @@ func generateFromTemplates(minValue, maxValue int,
 			i++
 		}
 	}
+	sort.Slice(compiledTemplates, func(i, j int) bool {
+		return compiledTemplates[i].name < compiledTemplates[j].name
+	})
 	for seriesID := minSeriesID; seriesID < maxSeriesID; seriesID++ {
 		labels := make([]prompb.Label, len(labelsTemplate))
 		// TODO optimize
