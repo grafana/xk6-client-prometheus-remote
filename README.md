@@ -117,9 +117,9 @@ const template = {
 };
 
 write_client.storeFromTemplates(
-    100,               // minimum random value
-    200,               // maximum random value
-    1643235433 * 1000, // timestamp in ms
+    100,                // minimum random value
+    200,                // maximum random value
+    1643235433 * 1000,  // timestamp in ms
     42,                 // series id range start
     45,                 // series id range end
     template,
