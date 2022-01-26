@@ -28,7 +28,7 @@ Then:
   $ xk6 build --with github.com/grafana/xk6-client-prometheus-remote@latest
   ```
 
-## Example
+## Basic Example
 
 ```javascript
 import { check, sleep } from 'k6';
@@ -101,3 +101,43 @@ default ✓ [======================================] 10 VUs  10s
      vus_max....................: 10      min=10     max=10
 ```
 Inspect examples folder for more details.
+
+## More advanced use case
+
+The above example shows how you can generate samples in JS and pass them into the extension, the extension will then submit them to the remote_write API endpoint.
+When you want to produce samples at a very high rate the overhead which is involved when passing objects from the JS runtime to the extension can get expensive though,
+to optimize this the extension also offers the option for the user to pass it a template based on which samples should be generated and then sent,
+by generating the samples inside the extension the overhead of passing objects from the JS runtime to the extension can be avoided.
+
+```javascript
+const template = {
+    __name__: 'k6_generated_metric_${series_id/4}',    // Name of the series.
+    series_id: '${series_id}',                         // Each value of this label will match 1 series.
+    cardinality_1e1: '${series_id/10}',                // Each value of this label will match 10 series.
+};
+
+write_client.storeFromTemplates(
+    100,               // minimum random value
+    200,               // maximum random value
+    1643235433 * 1000, // timestamp in ms
+    42,                 // series id range start
+    45,                 // series id range end
+    template,
+);
+```
+
+The above code could generate and send the following 3 samples, values are randomly chosen from the defined range:
+
+```
+Metric:    k6_generated_metric_10{cardinality_1e1="4", series_id="42"},
+Timestamp: 16432354331000
+Value:     193
+---
+Metric:    k6_generated_metric_10{cardinality_1e1="4", series_id="43"},
+Timestamp: 16432354331000
+Value:     121
+---
+Metric:    k6_generated_metric_11{cardinality_1e1="4", series_id="44"},
+Timestamp: 16432354331000
+Value:     142
+```
