@@ -5,8 +5,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"net/http"
 	"net/url"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -95,16 +100,76 @@ func (r *RemoteWrite) XTimeseries(labels map[string]string, samples []Sample) *T
 	return t
 }
 
+func (c *Client) StoreGenerated(ctx context.Context, total_series, batches, batch_size, batch int64) (httpext.Response, error) {
+	ts, err := generate_series(total_series, batches, batch_size, batch)
+	if err != nil {
+		return *httpext.NewResponse(), err
+	}
+	return c.Store(ctx, ts)
+}
+
+func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseries, error) {
+	if total_series == 0 {
+		return nil, nil
+	}
+	if batch > batches {
+		return nil, errors.New("batch must be in the range of batches")
+	}
+	if total_series/batches != batch_size {
+		return nil, errors.New("total_series must divide evenly into batches of size batch_size")
+	}
+
+	series := make([]Timeseries, batch_size)
+	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
+	for i := int64(0); i < batch_size; i++ {
+		series_id := batch_size*(batch-1) + i
+		labels := generate_cardinality_labels(total_series, series_id)
+		labels = append(labels, Label{
+			Name:  "__name__",
+			Value: "k6_generated_metric_" + strconv.Itoa(int(series_id)),
+		})
+
+		// Required for querying in order to have unique series excluding the metric name.
+		labels = append(labels, Label{
+			Name:  "series_id",
+			Value: strconv.Itoa(int(series_id)),
+		})
+
+		series[i] = Timeseries{
+			labels,
+			[]Sample{{rand.Float64() * 100, timestamp}},
+		}
+	}
+
+	return series, nil
+}
+
+func generate_cardinality_labels(total_series, series_id int64) []Label {
+	// exp is the greatest exponent of 10 that is less than total series.
+	exp := int64(math.Log10(float64(total_series)))
+	labels := make([]Label, 0, exp)
+	for x := 1; int64(x) <= exp; x++ {
+		labels = append(labels, Label{
+			Name:  "cardinality_1e" + strconv.Itoa(x),
+			Value: strconv.Itoa(int(series_id / int64(math.Pow(10, float64(x))))),
+		})
+	}
+	return labels
+}
+
 func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, error) {
 	var batch []prompb.TimeSeries
 	for _, t := range ts {
 		batch = append(batch, FromTimeseriesToPrometheusTimeseries(t))
 	}
+	return c.store(ctx, batch)
+}
 
+func (c *Client) store(ctx context.Context, batch []prompb.TimeSeries) (httpext.Response, error) {
 	// Required for k6 metrics
 	state := lib.GetState(ctx)
 	if state == nil {
-		return *httpext.NewResponse(ctx), errors.New("State is nil")
+		return *httpext.NewResponse(), errors.New("State is nil")
 	}
 
 	req := prompb.WriteRequest{
@@ -113,14 +178,14 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, 
 
 	data, err := proto.Marshal(&req)
 	if err != nil {
-		return *httpext.NewResponse(ctx), errors.Wrap(err, "failed to marshal remote-write request")
+		return *httpext.NewResponse(), errors.Wrap(err, "failed to marshal remote-write request")
 	}
 
 	compressed := snappy.Encode(nil, data)
 
 	res, err := c.send(ctx, state, compressed)
 	if err != nil {
-		return *httpext.NewResponse(ctx), errors.Wrap(err, "remote-write request failed")
+		return *httpext.NewResponse(), errors.Wrap(err, "remote-write request failed")
 	}
 	res.Request.Body = ""
 
@@ -130,7 +195,7 @@ func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, 
 // send sends a batch of samples to the HTTP endpoint, the request is the proto marshalled
 // and encoded bytes
 func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpext.Response, error) {
-	httpResp := httpext.NewResponse(ctx)
+	httpResp := httpext.NewResponse()
 	r, err := http.NewRequest("POST", c.cfg.Url, nil)
 	if err != nil {
 		return *httpResp, err
@@ -154,7 +219,7 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpex
 	}
 
 	url, _ := httpext.NewURL(c.cfg.Url, u.Host+u.Path)
-	response, err := httpext.MakeRequest(ctx, &httpext.ParsedHTTPRequest{
+	response, err := httpext.MakeRequest(ctx, state, &httpext.ParsedHTTPRequest{
 		URL:              &url,
 		Req:              r,
 		Body:             bytes.NewBuffer(req),
@@ -197,4 +262,87 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 		Labels:  labels,
 		Samples: samples,
 	}
+}
+
+// The only supported things are:
+// 1. replacing ${series_id} with the series_id provided
+// 2. replacing ${series_id/<integer>} with the evaluation of that
+// 3. if error in parsing just return the original
+func compileTemplate(template string) func(int) string {
+	i := strings.Index(template, "${series_id")
+	if i == -1 {
+		return func(_ int) string { return template }
+	}
+	switch template[i+len("${series_id")] {
+	case '}':
+		return func(seriesID int) string {
+			return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
+		}
+	case '/':
+		end := strings.Index(template[i:], "}")
+		if end == -1 {
+			return func(_ int) string { return template }
+		}
+		d, err := strconv.Atoi(template[i+len("${series_id/") : i+end])
+		if err != nil {
+			return func(_ int) string { return template }
+		}
+
+		return func(seriesID int) string {
+			return template[:i] + strconv.Itoa(seriesID/d) + template[i+end+1:]
+		}
+	}
+	// TODO error out when this get precompiled/optimized
+	return func(_ int) string { return template }
+}
+
+func generateFromTemplates(minValue, maxValue int,
+	timestamp int64, minSeriesID, maxSeriesID int,
+	labelsTemplate map[string]string,
+) []prompb.TimeSeries {
+	batchSize := maxSeriesID - minSeriesID
+	series := make([]prompb.TimeSeries, batchSize)
+
+	compiledTemplates := make([]struct {
+		name     string
+		template func(int) string
+	}, len(labelsTemplate))
+	{
+		i := 0
+		for k, v := range labelsTemplate {
+			compiledTemplates[i].name = k
+			compiledTemplates[i].template = compileTemplate(v)
+			i++
+		}
+	}
+	sort.Slice(compiledTemplates, func(i, j int) bool {
+		return compiledTemplates[i].name < compiledTemplates[j].name
+	})
+	for seriesID := minSeriesID; seriesID < maxSeriesID; seriesID++ {
+		labels := make([]prompb.Label, len(labelsTemplate))
+		// TODO optimize
+		for i, template := range compiledTemplates {
+			labels[i] = prompb.Label{Name: template.name, Value: template.template(seriesID)}
+		}
+
+		series[seriesID-minSeriesID] = prompb.TimeSeries{
+			Labels: labels,
+			Samples: []prompb.Sample{
+				{
+					Value:     (rand.Float64() * float64(maxValue-minValue)) + float64(minValue),
+					Timestamp: timestamp,
+				},
+			},
+		}
+	}
+
+	return series
+}
+
+func (c *Client) StoreFromTemplates(
+	ctx context.Context, minValue, maxValue int,
+	timestamp int64, minSeriesID, maxSeriesID int,
+	labelsTemplate map[string]string,
+) (httpext.Response, error) {
+	return c.store(ctx, generateFromTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, labelsTemplate))
 }
