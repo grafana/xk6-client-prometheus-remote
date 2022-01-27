@@ -103,7 +103,7 @@ func (r *RemoteWrite) XTimeseries(labels map[string]string, samples []Sample) *T
 func (c *Client) StoreGenerated(ctx context.Context, total_series, batches, batch_size, batch int64) (httpext.Response, error) {
 	ts, err := generate_series(total_series, batches, batch_size, batch)
 	if err != nil {
-		return *httpext.NewResponse(ctx), err
+		return *httpext.NewResponse(), err
 	}
 	return c.Store(ctx, ts)
 }
@@ -169,7 +169,7 @@ func (c *Client) store(ctx context.Context, batch []prompb.TimeSeries) (httpext.
 	// Required for k6 metrics
 	state := lib.GetState(ctx)
 	if state == nil {
-		return *httpext.NewResponse(ctx), errors.New("State is nil")
+		return *httpext.NewResponse(), errors.New("State is nil")
 	}
 
 	req := prompb.WriteRequest{
@@ -178,14 +178,14 @@ func (c *Client) store(ctx context.Context, batch []prompb.TimeSeries) (httpext.
 
 	data, err := proto.Marshal(&req)
 	if err != nil {
-		return *httpext.NewResponse(ctx), errors.Wrap(err, "failed to marshal remote-write request")
+		return *httpext.NewResponse(), errors.Wrap(err, "failed to marshal remote-write request")
 	}
 
 	compressed := snappy.Encode(nil, data)
 
 	res, err := c.send(ctx, state, compressed)
 	if err != nil {
-		return *httpext.NewResponse(ctx), errors.Wrap(err, "remote-write request failed")
+		return *httpext.NewResponse(), errors.Wrap(err, "remote-write request failed")
 	}
 	res.Request.Body = ""
 
@@ -195,7 +195,7 @@ func (c *Client) store(ctx context.Context, batch []prompb.TimeSeries) (httpext.
 // send sends a batch of samples to the HTTP endpoint, the request is the proto marshalled
 // and encoded bytes
 func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpext.Response, error) {
-	httpResp := httpext.NewResponse(ctx)
+	httpResp := httpext.NewResponse()
 	r, err := http.NewRequest("POST", c.cfg.Url, nil)
 	if err != nil {
 		return *httpResp, err
@@ -219,7 +219,7 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpex
 	}
 
 	url, _ := httpext.NewURL(c.cfg.Url, u.Host+u.Path)
-	response, err := httpext.MakeRequest(ctx, &httpext.ParsedHTTPRequest{
+	response, err := httpext.MakeRequest(ctx, state, &httpext.ParsedHTTPRequest{
 		URL:              &url,
 		Req:              r,
 		Body:             bytes.NewBuffer(req),
