@@ -2,7 +2,6 @@ package remotewrite
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"log"
 	"math"
@@ -14,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dop251/goja"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/snappy"
 	"github.com/pkg/errors"
@@ -28,16 +28,39 @@ import (
 // Register the extension on module initialization, available to
 // import from JS as "k6/x/remotewrite".
 func init() {
-	modules.Register("k6/x/remotewrite", new(RemoteWrite))
+	modules.Register("k6/x/remotewrite", new(root))
 }
 
 // RemoteWrite is the k6 extension for interacting Prometheus Remote Write endpoints.
-type RemoteWrite struct{}
+type RemoteWrite struct {
+	vu modules.VU
+}
+
+type root struct{}
+
+var _ modules.Module = &root{}
+
+func (r *root) NewModuleInstance(vu modules.VU) modules.Instance {
+	return &RemoteWrite{
+		vu: vu,
+	}
+}
+
+func (r *RemoteWrite) Exports() modules.Exports {
+	return modules.Exports{
+		Named: map[string]interface{}{
+			"Client":     r.xclient,
+			"Sample":     r.sample,
+			"Timeseries": r.timeseries,
+		},
+	}
+}
 
 // Client is the client wrapper.
 type Client struct {
 	client *http.Client
 	cfg    *Config
+	vu     modules.VU
 }
 
 type Config struct {
@@ -47,8 +70,14 @@ type Config struct {
 	TenantName string `json:"tenant_name"`
 }
 
-// XClient represents
-func (r *RemoteWrite) XClient(ctxPtr *context.Context, config Config) interface{} {
+// xclient represents
+func (r *RemoteWrite) xclient(c goja.ConstructorCall) *goja.Object {
+	var config Config
+	rt := r.vu.Runtime()
+	err := rt.ExportTo(c.Argument(0), &config)
+	if err != nil {
+		common.Throw(rt, fmt.Errorf("Client constructor expects first argument to be Config"))
+	}
 	if config.Url == "" {
 		log.Fatal(fmt.Errorf("url is required"))
 	}
@@ -59,11 +88,11 @@ func (r *RemoteWrite) XClient(ctxPtr *context.Context, config Config) interface{
 		config.Timeout = "10s"
 	}
 
-	rt := common.GetRuntime(*ctxPtr)
-	return common.Bind(rt, &Client{
+	return rt.ToValue(&Client{
 		client: &http.Client{},
 		cfg:    &config,
-	}, ctxPtr)
+		vu:     r.vu,
+	}).ToObject(rt)
 }
 
 type Timeseries struct {
@@ -80,14 +109,34 @@ type Sample struct {
 	Timestamp int64
 }
 
-func (r *RemoteWrite) XSample(value float64, timestamp int64) Sample {
+func (r *RemoteWrite) sample(c goja.ConstructorCall) *goja.Object {
+	rt := r.vu.Runtime()
+	call, _ := goja.AssertFunction(rt.ToValue(xsample))
+	v, err := call(goja.Undefined(), c.Arguments...)
+	if err != nil {
+		common.Throw(rt, err)
+	}
+	return v.ToObject(rt)
+}
+
+func xsample(value float64, timestamp int64) Sample {
 	return Sample{
 		Value:     value,
 		Timestamp: timestamp,
 	}
 }
 
-func (r *RemoteWrite) XTimeseries(labels map[string]string, samples []Sample) *Timeseries {
+func (r *RemoteWrite) timeseries(c goja.ConstructorCall) *goja.Object {
+	rt := r.vu.Runtime()
+	call, _ := goja.AssertFunction(rt.ToValue(xtimeseries))
+	v, err := call(goja.Undefined(), c.Arguments...)
+	if err != nil {
+		common.Throw(rt, err)
+	}
+	return v.ToObject(rt)
+}
+
+func xtimeseries(labels map[string]string, samples []Sample) *Timeseries {
 	t := &Timeseries{
 		Labels:  make([]Label, 0, len(labels)),
 		Samples: samples,
@@ -100,12 +149,12 @@ func (r *RemoteWrite) XTimeseries(labels map[string]string, samples []Sample) *T
 	return t
 }
 
-func (c *Client) StoreGenerated(ctx context.Context, total_series, batches, batch_size, batch int64) (httpext.Response, error) {
+func (c *Client) StoreGenerated(total_series, batches, batch_size, batch int64) (httpext.Response, error) {
 	ts, err := generate_series(total_series, batches, batch_size, batch)
 	if err != nil {
 		return *httpext.NewResponse(), err
 	}
-	return c.Store(ctx, ts)
+	return c.Store(ts)
 }
 
 func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseries, error) {
@@ -157,17 +206,17 @@ func generate_cardinality_labels(total_series, series_id int64) []Label {
 	return labels
 }
 
-func (c *Client) Store(ctx context.Context, ts []Timeseries) (httpext.Response, error) {
+func (c *Client) Store(ts []Timeseries) (httpext.Response, error) {
 	var batch []prompb.TimeSeries
 	for _, t := range ts {
 		batch = append(batch, FromTimeseriesToPrometheusTimeseries(t))
 	}
-	return c.store(ctx, batch)
+	return c.store(batch)
 }
 
-func (c *Client) store(ctx context.Context, batch []prompb.TimeSeries) (httpext.Response, error) {
+func (c *Client) store(batch []prompb.TimeSeries) (httpext.Response, error) {
 	// Required for k6 metrics
-	state := lib.GetState(ctx)
+	state := c.vu.State()
 	if state == nil {
 		return *httpext.NewResponse(), errors.New("State is nil")
 	}
@@ -183,7 +232,7 @@ func (c *Client) store(ctx context.Context, batch []prompb.TimeSeries) (httpext.
 
 	compressed := snappy.Encode(nil, data)
 
-	res, err := c.send(ctx, state, compressed)
+	res, err := c.send(state, compressed)
 	if err != nil {
 		return *httpext.NewResponse(), errors.Wrap(err, "remote-write request failed")
 	}
@@ -194,7 +243,7 @@ func (c *Client) store(ctx context.Context, batch []prompb.TimeSeries) (httpext.
 
 // send sends a batch of samples to the HTTP endpoint, the request is the proto marshalled
 // and encoded bytes
-func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpext.Response, error) {
+func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 	httpResp := httpext.NewResponse()
 	r, err := http.NewRequest("POST", c.cfg.Url, nil)
 	if err != nil {
@@ -219,7 +268,7 @@ func (c *Client) send(ctx context.Context, state *lib.State, req []byte) (httpex
 	}
 
 	url, _ := httpext.NewURL(c.cfg.Url, u.Host+u.Path)
-	response, err := httpext.MakeRequest(ctx, state, &httpext.ParsedHTTPRequest{
+	response, err := httpext.MakeRequest(c.vu.Context(), state, &httpext.ParsedHTTPRequest{
 		URL:              &url,
 		Req:              r,
 		Body:             bytes.NewBuffer(req),
@@ -340,9 +389,9 @@ func generateFromTemplates(minValue, maxValue int,
 }
 
 func (c *Client) StoreFromTemplates(
-	ctx context.Context, minValue, maxValue int,
+	minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
 	labelsTemplate map[string]string,
 ) (httpext.Response, error) {
-	return c.store(ctx, generateFromTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, labelsTemplate))
+	return c.store(generateFromTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, labelsTemplate))
 }

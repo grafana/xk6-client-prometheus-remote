@@ -3,6 +3,7 @@ module github.com/grafana/xk6-client-prometheus-remote
 go 1.17
 
 require (
+	github.com/dop251/goja v0.0.0-20220110113543-261677941f3c
 	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.4
 	github.com/pkg/errors v0.9.1
@@ -18,7 +19,6 @@ require (
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91 // indirect
-	github.com/dop251/goja v0.0.0-20220110113543-261677941f3c // indirect
 	github.com/fatih/color v1.12.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4-0.20211119122758-180fcef48034+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
