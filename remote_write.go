@@ -28,7 +28,7 @@ import (
 // Register the extension on module initialization, available to
 // import from JS as "k6/x/remotewrite".
 func init() {
-	modules.Register("k6/x/remotewrite", new(root))
+	modules.Register("k6/x/remotewrite", new(remoteWriteModule))
 }
 
 // RemoteWrite is the k6 extension for interacting Prometheus Remote Write endpoints.
@@ -36,11 +36,11 @@ type RemoteWrite struct {
 	vu modules.VU
 }
 
-type root struct{}
+type remoteWriteModule struct{}
 
-var _ modules.Module = &root{}
+var _ modules.Module = &remoteWriteModule{}
 
-func (r *root) NewModuleInstance(vu modules.VU) modules.Instance {
+func (r *remoteWriteModule) NewModuleInstance(vu modules.VU) modules.Instance {
 	return &RemoteWrite{
 		vu: vu,
 	}
