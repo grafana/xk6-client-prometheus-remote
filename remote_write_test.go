@@ -42,9 +42,9 @@ func TestGenerateFromTemplates(t *testing.T) {
 				maxSeriesID: 55,
 				labelsTemplate: map[string]string{
 					"__name__":        "k6_generated_metric_${series_id}",
-					"series_id":       "${series_id}",
 					"cardinality_1e1": "${series_id/10}",
 					"cardinality_1e3": "${series_id/1000}",
+					"series_id":       "${series_id}",
 				},
 			},
 			want: want{
@@ -54,41 +54,41 @@ func TestGenerateFromTemplates(t *testing.T) {
 					{
 						Labels: []prompb.Label{
 							{Name: "__name__", Value: "k6_generated_metric_50"},
-							{Name: "series_id", Value: "50"},
 							{Name: "cardinality_1e1", Value: "5"},
 							{Name: "cardinality_1e3", Value: "0"},
+							{Name: "series_id", Value: "50"},
 						},
 						Samples: []prompb.Sample{{Timestamp: 123456789}},
 					}, {
 						Labels: []prompb.Label{
 							{Name: "__name__", Value: "k6_generated_metric_51"},
-							{Name: "series_id", Value: "51"},
 							{Name: "cardinality_1e1", Value: "5"},
 							{Name: "cardinality_1e3", Value: "0"},
+							{Name: "series_id", Value: "51"},
 						},
 						Samples: []prompb.Sample{{Timestamp: 123456789}},
 					}, {
 						Labels: []prompb.Label{
 							{Name: "__name__", Value: "k6_generated_metric_52"},
-							{Name: "series_id", Value: "52"},
 							{Name: "cardinality_1e1", Value: "5"},
 							{Name: "cardinality_1e3", Value: "0"},
+							{Name: "series_id", Value: "52"},
 						},
 						Samples: []prompb.Sample{{Timestamp: 123456789}},
 					}, {
 						Labels: []prompb.Label{
 							{Name: "__name__", Value: "k6_generated_metric_53"},
-							{Name: "series_id", Value: "53"},
 							{Name: "cardinality_1e1", Value: "5"},
 							{Name: "cardinality_1e3", Value: "0"},
+							{Name: "series_id", Value: "53"},
 						},
 						Samples: []prompb.Sample{{Timestamp: 123456789}},
 					}, {
 						Labels: []prompb.Label{
 							{Name: "__name__", Value: "k6_generated_metric_54"},
-							{Name: "series_id", Value: "54"},
 							{Name: "cardinality_1e1", Value: "5"},
 							{Name: "cardinality_1e3", Value: "0"},
+							{Name: "series_id", Value: "54"},
 						},
 						Samples: []prompb.Sample{{Timestamp: 123456789}},
 					},
