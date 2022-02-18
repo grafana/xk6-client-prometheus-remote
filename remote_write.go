@@ -2,6 +2,7 @@ package remotewrite
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"math"
@@ -23,6 +24,7 @@ import (
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/netext/httpext"
+	"google.golang.org/protobuf/encoding/protowire"
 )
 
 // Register the extension on module initialization, available to
@@ -49,9 +51,10 @@ func (r *remoteWriteModule) NewModuleInstance(vu modules.VU) modules.Instance {
 func (r *RemoteWrite) Exports() modules.Exports {
 	return modules.Exports{
 		Named: map[string]interface{}{
-			"Client":     r.xclient,
-			"Sample":     r.sample,
-			"Timeseries": r.timeseries,
+			"Client":                   r.xclient,
+			"Sample":                   r.sample,
+			"Timeseries":               r.timeseries,
+			"precompileLabelTemplates": precompileLabelTemplates,
 		},
 	}
 }
@@ -317,60 +320,93 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 // 1. replacing ${series_id} with the series_id provided
 // 2. replacing ${series_id/<integer>} with the evaluation of that
 // 3. if error in parsing just return the original
-func compileTemplate(template string) func(int) string {
+func compileTemplate(template string) (func(int) string, func([]byte, int) []byte) {
 	i := strings.Index(template, "${series_id")
 	if i == -1 {
-		return func(_ int) string { return template }
+		return func(_ int) string { return template },
+			func(b []byte, _ int) []byte { return append(b, template...) }
 	}
 	switch template[i+len("${series_id")] {
 	case '}':
 		return func(seriesID int) string {
-			return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
-		}
-	case '/':
+				return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
+			},
+			func(b []byte, seriesID int) []byte {
+				b = append(b, template[:i]...)
+				b = strconv.AppendInt(b, int64(seriesID), 10)
+				return append(b, template[i+len("${series_id}"):]...)
+			}
+	case '%':
 		end := strings.Index(template[i:], "}")
 		if end == -1 {
-			return func(_ int) string { return template }
+			return func(_ int) string { return template },
+				func(b []byte, _ int) []byte { return append(b, template...) }
 		}
 		d, err := strconv.Atoi(template[i+len("${series_id/") : i+end])
 		if err != nil {
-			return func(_ int) string { return template }
+			return func(_ int) string { return template },
+				func(b []byte, _ int) []byte { return append(b, template...) }
 		}
 
-		return func(seriesID int) string {
-			return template[:i] + strconv.Itoa(seriesID/d) + template[i+end+1:]
+		possibleValues := make([][]byte, d)
+		// TODO have an upper limit
+		for j := 0; j < d; j++ {
+			var b []byte
+			b = append(b, template[:i]...)
+			b = strconv.AppendInt(b, int64(j), 10)
+			possibleValues[j] = append(b, template[i+end+1:]...)
 		}
+		return func(seriesID int) string {
+				return template[:i] + strconv.Itoa(seriesID%d) + template[i+end+1:]
+			},
+			func(b []byte, seriesID int) []byte {
+				return append(b, possibleValues[seriesID%d]...)
+			}
+	case '/':
+		end := strings.Index(template[i:], "}")
+		if end == -1 {
+			return func(_ int) string { return template },
+				func(b []byte, _ int) []byte { return append(b, template...) }
+		}
+		d, err := strconv.Atoi(template[i+len("${series_id/") : i+end])
+		if err != nil {
+			return func(_ int) string { return template },
+				func(b []byte, _ int) []byte { return append(b, template...) }
+		}
+
+		var memoize []byte
+		var memoizeValue int64
+		return func(seriesID int) string {
+				return template[:i] + strconv.Itoa(seriesID/d) + template[i+end+1:]
+			},
+			func(b []byte, seriesID int) []byte {
+				value := int64(seriesID / d)
+				if memoize == nil || value != memoizeValue {
+					memoizeValue = value
+					memoize = memoize[:0]
+					memoize = append(memoize, template[:i]...)
+					memoize = strconv.AppendInt(memoize, value, 10)
+					memoize = append(memoize, template[i+end+1:]...)
+				}
+				return append(b, memoize...)
+			}
 	}
 	// TODO error out when this get precompiled/optimized
-	return func(_ int) string { return template }
+	return func(_ int) string { return template },
+		func(b []byte, _ int) []byte { return append(b, []byte(template)...) }
 }
 
 func generateFromTemplates(minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
-	labelsTemplate map[string]string,
+	template *labelTemplates,
 ) []prompb.TimeSeries {
 	batchSize := maxSeriesID - minSeriesID
 	series := make([]prompb.TimeSeries, batchSize)
 
-	compiledTemplates := make([]struct {
-		name     string
-		template func(int) string
-	}, len(labelsTemplate))
-	{
-		i := 0
-		for k, v := range labelsTemplate {
-			compiledTemplates[i].name = k
-			compiledTemplates[i].template = compileTemplate(v)
-			i++
-		}
-	}
-	sort.Slice(compiledTemplates, func(i, j int) bool {
-		return compiledTemplates[i].name < compiledTemplates[j].name
-	})
 	for seriesID := minSeriesID; seriesID < maxSeriesID; seriesID++ {
-		labels := make([]prompb.Label, len(labelsTemplate))
+		labels := make([]prompb.Label, len(template.compiledTemplates))
 		// TODO optimize
-		for i, template := range compiledTemplates {
+		for i, template := range template.compiledTemplates {
 			labels[i] = prompb.Label{Name: template.name, Value: template.template(seriesID)}
 		}
 
@@ -388,10 +424,129 @@ func generateFromTemplates(minValue, maxValue int,
 	return series
 }
 
+// this is opaque on purpose so that it can't be done anything to from the js side
+type labelTemplates struct {
+	compiledTemplates []struct {
+		name           string
+		template       func(int) string
+		appendTemplate func([]byte, int) []byte
+	}
+	labelValue []byte
+}
+
+func precompileLabelTemplates(labelsTemplate map[string]string) *labelTemplates {
+	compiledTemplates := make([]struct {
+		name           string
+		template       func(int) string
+		appendTemplate func([]byte, int) []byte
+	}, len(labelsTemplate))
+	{
+		i := 0
+		for k, v := range labelsTemplate {
+			compiledTemplates[i].name = k
+			compiledTemplates[i].template, compiledTemplates[i].appendTemplate = compileTemplate(v)
+			i++
+		}
+	}
+	sort.Slice(compiledTemplates, func(i, j int) bool {
+		return compiledTemplates[i].name < compiledTemplates[j].name
+	})
+	return &labelTemplates{
+		compiledTemplates: compiledTemplates,
+	}
+}
+
 func (c *Client) StoreFromTemplates(
 	minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
 	labelsTemplate map[string]string,
 ) (httpext.Response, error) {
-	return c.store(generateFromTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, labelsTemplate))
+	template := precompileLabelTemplates(labelsTemplate)
+	return c.store(generateFromTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, template))
+}
+
+func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesID int, timestamp int64) (err error) {
+	labelValue := template.labelValue[:]
+	for _, template := range template.compiledTemplates {
+		labelValue = labelValue[:0]
+		w.WriteByte(0xa)
+		labelValue = protowire.AppendVarint(labelValue, uint64(len(template.name)))
+		n1 := len(labelValue)
+		labelValue = template.appendTemplate(labelValue, seriesID)
+		n2 := len(labelValue)
+		labelValue = protowire.AppendVarint(labelValue, uint64(n2-n1))
+		n3 := len(labelValue)
+
+		labelValue = protowire.AppendVarint(labelValue, uint64(n3+1+1+len(template.name)))
+		w.Write(labelValue[n3:])
+		w.WriteByte(0xa)
+		w.Write(labelValue[:n1])
+		w.WriteString(template.name)
+		w.WriteByte(0x12)
+		w.Write(labelValue[n2:n3])
+		w.Write(labelValue[n1:n2])
+	}
+
+	labelValue = labelValue[:10]
+	labelValue[0] = 0x9
+	binary.LittleEndian.PutUint64(labelValue[1:9], uint64(math.Float64bits(value)))
+	labelValue[9] = 0x10
+	labelValue = protowire.AppendVarint(labelValue, uint64(timestamp))
+
+	n := len(labelValue)
+	labelValue = labelValue[:n+1]
+	labelValue[n] = 0x12
+	labelValue = protowire.AppendVarint(labelValue, uint64(n))
+	w.Write(labelValue[n:])
+	w.Write(labelValue[:n])
+	template.labelValue = labelValue
+	return nil // TODO fix
+}
+
+func (c *Client) StoreFromPrecompiledTemplates(
+	minValue, maxValue int,
+	timestamp int64, minSeriesID, maxSeriesID int,
+	template *labelTemplates,
+) (httpext.Response, error) {
+	bigB := make([]byte, 1024)
+	state := c.vu.State()
+	if state == nil {
+		return *httpext.NewResponse(), errors.New("State is nil")
+	}
+	buf := new(bytes.Buffer)
+	buf.Reset()
+
+	var err error
+	tsBuf := new(bytes.Buffer)
+	bigB[0] = 0xa
+	template.writeFor(tsBuf, valueBetween(minValue, maxValue), minSeriesID, timestamp)
+	bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len()))
+	buf.Write(bigB)
+	tsBuf.WriteTo(buf)
+
+	buf.Grow((buf.Len() + 2) * (maxSeriesID - minSeriesID)) // heuristics to try to get big enough buffer in one go
+	for seriesID := minSeriesID + 1; seriesID < maxSeriesID; seriesID++ {
+		tsBuf.Reset()
+		bigB[0] = 0xa
+		template.writeFor(tsBuf, valueBetween(minValue, maxValue), minSeriesID, timestamp)
+		bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len()))
+		buf.Write(bigB)
+		tsBuf.WriteTo(buf)
+	}
+
+	b := buf.Bytes()
+	compressed := make([]byte, len(b)/9) // the general size is actually between 1/9 and 1/10th but this is closed enough
+	compressed = snappy.Encode(compressed, b)
+
+	res, err := c.send(state, compressed)
+	if err != nil {
+		return *httpext.NewResponse(), errors.Wrap(err, "remote-write request failed")
+	}
+	res.Request.Body = ""
+
+	return res, nil
+}
+
+func valueBetween(min, max int) float64 {
+	return (rand.Float64() * float64(max-min)) + float64(min)
 }
