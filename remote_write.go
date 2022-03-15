@@ -356,8 +356,13 @@ func compileTemplate(template string) (func(int) string, func([]byte, int) []byt
 			b = strconv.AppendInt(b, int64(j), 10)
 			possibleValues[j] = append(b, template[i+end+1:]...)
 		}
+		possibleValuesS := make([]string, d)
+		// TODO have an upper limit
+		for j := 0; j < d; j++ {
+			possibleValuesS[j] = template[:i] + strconv.Itoa((j)) + template[i+end+1:]
+		}
 		return func(seriesID int) string {
-				return template[:i] + strconv.Itoa(seriesID%d) + template[i+end+1:]
+				return possibleValuesS[seriesID%d]
 			},
 			func(b []byte, seriesID int) []byte {
 				return append(b, possibleValues[seriesID%d]...)
@@ -373,11 +378,18 @@ func compileTemplate(template string) (func(int) string, func([]byte, int) []byt
 			return func(_ int) string { return template },
 				func(b []byte, _ int) []byte { return append(b, template...) }
 		}
+		var memoizeS string
+		var memoizeSValue int
 
 		var memoize []byte
 		var memoizeValue int64
 		return func(seriesID int) string {
-				return template[:i] + strconv.Itoa(seriesID/d) + template[i+end+1:]
+				value := (seriesID / d)
+				if memoizeS == "" || value != memoizeSValue {
+					memoizeSValue = value
+					memoizeS = template[:i] + strconv.Itoa(value) + template[i+end+1:]
+				}
+				return memoizeS
 			},
 			func(b []byte, seriesID int) []byte {
 				value := int64(seriesID / d)
