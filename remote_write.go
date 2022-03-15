@@ -315,38 +315,48 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 		Samples: samples,
 	}
 }
+  // returns the template in all cases
+func identityLabelGenerator(template string ) labelGenerator {
+
+		return labelGenerator{
+			ToString:   func(_ int) string { return template },
+			AppendByte: func(b []byte, _ int) []byte { return append(b, template...) },
+		}
+}
 
 // The only supported things are:
 // 1. replacing ${series_id} with the series_id provided
 // 2. replacing ${series_id/<integer>} with the evaluation of that
 // 3. if error in parsing just return the original
-func compileTemplate(template string) (func(int) string, func([]byte, int) []byte) {
+func compileTemplate(template string) labelGenerator {
 	i := strings.Index(template, "${series_id")
 	if i == -1 {
-		return func(_ int) string { return template },
-			func(b []byte, _ int) []byte { return append(b, template...) }
+		return labelGenerator{
+			ToString:   func(_ int) string { return template },
+			AppendByte: func(b []byte, _ int) []byte { return append(b, template...) },
+		}
 	}
 	switch template[i+len("${series_id")] {
 	case '}':
-		return func(seriesID int) string {
+		return labelGenerator{
+			ToString: func(seriesID int) string {
 				return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
 			},
-			func(b []byte, seriesID int) []byte {
+			AppendByte: 		func(b []byte, seriesID int) []byte {
 				b = append(b, template[:i]...)
 				b = strconv.AppendInt(b, int64(seriesID), 10)
 				return append(b, template[i+len("${series_id}"):]...)
-			}
+			},
+    }
 	case '%':
 		end := strings.Index(template[i:], "}")
 		if end == -1 {
-			return func(_ int) string { return template },
-				func(b []byte, _ int) []byte { return append(b, template...) }
-		}
+      return identityLabelGenerator(template)
+    }
 		d, err := strconv.Atoi(template[i+len("${series_id/") : i+end])
 		if err != nil {
-			return func(_ int) string { return template },
-				func(b []byte, _ int) []byte { return append(b, template...) }
-		}
+      return identityLabelGenerator(template)
+    }
 
 		possibleValues := make([][]byte, d)
 		// TODO have an upper limit
@@ -361,29 +371,30 @@ func compileTemplate(template string) (func(int) string, func([]byte, int) []byt
 		for j := 0; j < d; j++ {
 			possibleValuesS[j] = template[:i] + strconv.Itoa((j)) + template[i+end+1:]
 		}
-		return func(seriesID int) string {
+		return labelGenerator{
+			ToString: func(seriesID int) string {
 				return possibleValuesS[seriesID%d]
 			},
-			func(b []byte, seriesID int) []byte {
+			AppendByte:			func(b []byte, seriesID int) []byte {
 				return append(b, possibleValues[seriesID%d]...)
-			}
-	case '/':
+			},
+    }
+  case '/':
 		end := strings.Index(template[i:], "}")
 		if end == -1 {
-			return func(_ int) string { return template },
-				func(b []byte, _ int) []byte { return append(b, template...) }
+      return identityLabelGenerator(template)
 		}
 		d, err := strconv.Atoi(template[i+len("${series_id/") : i+end])
 		if err != nil {
-			return func(_ int) string { return template },
-				func(b []byte, _ int) []byte { return append(b, template...) }
+      return identityLabelGenerator(template)
 		}
 		var memoizeS string
 		var memoizeSValue int
 
 		var memoize []byte
 		var memoizeValue int64
-		return func(seriesID int) string {
+		return labelGenerator{
+			ToString: func(seriesID int) string {
 				value := (seriesID / d)
 				if memoizeS == "" || value != memoizeSValue {
 					memoizeSValue = value
@@ -391,7 +402,7 @@ func compileTemplate(template string) (func(int) string, func([]byte, int) []byt
 				}
 				return memoizeS
 			},
-			func(b []byte, seriesID int) []byte {
+			AppendByte: 		func(b []byte, seriesID int) []byte {
 				value := int64(seriesID / d)
 				if memoize == nil || value != memoizeValue {
 					memoizeValue = value
@@ -401,11 +412,16 @@ func compileTemplate(template string) (func(int) string, func([]byte, int) []byt
 					memoize = append(memoize, template[i+end+1:]...)
 				}
 				return append(b, memoize...)
-			}
+			},
+    }
 	}
 	// TODO error out when this get precompiled/optimized
-	return func(_ int) string { return template },
-		func(b []byte, _ int) []byte { return append(b, []byte(template)...) }
+	return identityLabelGenerator(template)
+}
+
+type labelGenerator struct {
+	ToString   func(int) string
+	AppendByte func([]byte, int) []byte
 }
 
 func generateFromTemplates(minValue, maxValue int,
@@ -456,7 +472,8 @@ func precompileLabelTemplates(labelsTemplate map[string]string) *labelTemplates 
 		i := 0
 		for k, v := range labelsTemplate {
 			compiledTemplates[i].name = k
-			compiledTemplates[i].template, compiledTemplates[i].appendTemplate = compileTemplate(v)
+      generator := compileTemplate(v)
+			compiledTemplates[i].template, compiledTemplates[i].appendTemplate = generator.ToString, generator.AppendByte
 			i++
 		}
 	}
