@@ -435,7 +435,7 @@ func generateFromTemplates(minValue, maxValue int,
 		labels := make([]prompb.Label, len(template.compiledTemplates))
 		// TODO optimize
 		for i, template := range template.compiledTemplates {
-			labels[i] = prompb.Label{Name: template.name, Value: template.template(seriesID)}
+			labels[i] = prompb.Label{Name: template.name, Value: template.generator.ToString(seriesID)}
 		}
 
 		series[seriesID-minSeriesID] = prompb.TimeSeries{
@@ -456,8 +456,7 @@ func generateFromTemplates(minValue, maxValue int,
 type labelTemplates struct {
 	compiledTemplates []struct {
 		name           string
-		template       func(int) string
-		appendTemplate func([]byte, int) []byte
+    generator labelGenerator
 	}
 	labelValue []byte
 }
@@ -465,15 +464,13 @@ type labelTemplates struct {
 func precompileLabelTemplates(labelsTemplate map[string]string) *labelTemplates {
 	compiledTemplates := make([]struct {
 		name           string
-		template       func(int) string
-		appendTemplate func([]byte, int) []byte
+    generator labelGenerator
 	}, len(labelsTemplate))
 	{
 		i := 0
 		for k, v := range labelsTemplate {
 			compiledTemplates[i].name = k
-      generator := compileTemplate(v)
-			compiledTemplates[i].template, compiledTemplates[i].appendTemplate = generator.ToString, generator.AppendByte
+      compiledTemplates[i].generator = compileTemplate(v)
 			i++
 		}
 	}
@@ -501,7 +498,7 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 		w.WriteByte(0xa)
 		labelValue = protowire.AppendVarint(labelValue, uint64(len(template.name)))
 		n1 := len(labelValue)
-		labelValue = template.appendTemplate(labelValue, seriesID)
+		labelValue = template.generator.AppendByte(labelValue, seriesID)
 		n2 := len(labelValue)
 		labelValue = protowire.AppendVarint(labelValue, uint64(n2-n1))
 		n3 := len(labelValue)
