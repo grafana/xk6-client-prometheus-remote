@@ -488,7 +488,7 @@ func (c *Client) StoreFromTemplates(
 	labelsTemplate map[string]string,
 ) (httpext.Response, error) {
 	template := precompileLabelTemplates(labelsTemplate)
-	return c.store(generateFromTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, template))
+	return c.StoreFromPrecompiledTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, template)
 }
 
 func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesID int, timestamp int64) (err error) {
