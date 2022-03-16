@@ -315,13 +315,13 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 		Samples: samples,
 	}
 }
-  // returns the template in all cases
-func identityLabelGenerator(template string ) labelGenerator {
 
-		return labelGenerator{
-			ToString:   func(_ int) string { return template },
-			AppendByte: func(b []byte, _ int) []byte { return append(b, template...) },
-		}
+// returns the template in all cases
+func identityLabelGenerator(template string) labelGenerator {
+	return labelGenerator{
+		ToString:   func(_ int) string { return template },
+		AppendByte: func(b []byte, _ int) []byte { return append(b, template...) },
+	}
 }
 
 // The only supported things are:
@@ -342,21 +342,21 @@ func compileTemplate(template string) labelGenerator {
 			ToString: func(seriesID int) string {
 				return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
 			},
-			AppendByte: 		func(b []byte, seriesID int) []byte {
+			AppendByte: func(b []byte, seriesID int) []byte {
 				b = append(b, template[:i]...)
 				b = strconv.AppendInt(b, int64(seriesID), 10)
 				return append(b, template[i+len("${series_id}"):]...)
 			},
-    }
+		}
 	case '%':
 		end := strings.Index(template[i:], "}")
 		if end == -1 {
-      return identityLabelGenerator(template)
-    }
+			return identityLabelGenerator(template)
+		}
 		d, err := strconv.Atoi(template[i+len("${series_id/") : i+end])
 		if err != nil {
-      return identityLabelGenerator(template)
-    }
+			return identityLabelGenerator(template)
+		}
 
 		possibleValues := make([][]byte, d)
 		// TODO have an upper limit
@@ -375,18 +375,18 @@ func compileTemplate(template string) labelGenerator {
 			ToString: func(seriesID int) string {
 				return possibleValuesS[seriesID%d]
 			},
-			AppendByte:			func(b []byte, seriesID int) []byte {
+			AppendByte: func(b []byte, seriesID int) []byte {
 				return append(b, possibleValues[seriesID%d]...)
 			},
-    }
-  case '/':
+		}
+	case '/':
 		end := strings.Index(template[i:], "}")
 		if end == -1 {
-      return identityLabelGenerator(template)
+			return identityLabelGenerator(template)
 		}
 		d, err := strconv.Atoi(template[i+len("${series_id/") : i+end])
 		if err != nil {
-      return identityLabelGenerator(template)
+			return identityLabelGenerator(template)
 		}
 		var memoizeS string
 		var memoizeSValue int
@@ -402,7 +402,7 @@ func compileTemplate(template string) labelGenerator {
 				}
 				return memoizeS
 			},
-			AppendByte: 		func(b []byte, seriesID int) []byte {
+			AppendByte: func(b []byte, seriesID int) []byte {
 				value := int64(seriesID / d)
 				if memoize == nil || value != memoizeValue {
 					memoizeValue = value
@@ -413,7 +413,7 @@ func compileTemplate(template string) labelGenerator {
 				}
 				return append(b, memoize...)
 			},
-    }
+		}
 	}
 	// TODO error out when this get precompiled/optimized
 	return identityLabelGenerator(template)
@@ -455,22 +455,22 @@ func generateFromTemplates(minValue, maxValue int,
 // this is opaque on purpose so that it can't be done anything to from the js side
 type labelTemplates struct {
 	compiledTemplates []struct {
-		name           string
-    generator labelGenerator
+		name      string
+		generator labelGenerator
 	}
 	labelValue []byte
 }
 
 func precompileLabelTemplates(labelsTemplate map[string]string) *labelTemplates {
 	compiledTemplates := make([]struct {
-		name           string
-    generator labelGenerator
+		name      string
+		generator labelGenerator
 	}, len(labelsTemplate))
 	{
 		i := 0
 		for k, v := range labelsTemplate {
 			compiledTemplates[i].name = k
-      compiledTemplates[i].generator = compileTemplate(v)
+			compiledTemplates[i].generator = compileTemplate(v)
 			i++
 		}
 	}
