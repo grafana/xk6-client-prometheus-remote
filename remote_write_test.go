@@ -2,8 +2,10 @@ package remotewrite
 
 import (
 	"bytes"
+	"math/rand"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/prometheus/prompb"
@@ -129,8 +131,9 @@ func TestGenerateFromTemplates(t *testing.T) {
 // this test that the prompb stream marshalling implementation produces the same result as the upstream one
 func TestStreamEncoding(t *testing.T) {
 	// TODO make this even bigger and more complicated
-	value := valueBetween(10, 100)            // the value we will be setting 1
-	timestamp := int64(valueBetween(10, 100)) // timestamp
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	value := valueBetween(r, 10, 100)            // the value we will be setting 1
+	timestamp := int64(valueBetween(r, 10, 100)) // timestamp
 	// this is the upstream
 	d, _ := proto.Marshal(&prompb.WriteRequest{
 		Timeseries: []prompb.TimeSeries{

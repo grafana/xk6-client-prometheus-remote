@@ -458,6 +458,7 @@ type labelTemplates struct {
 		name      string
 		generator labelGenerator
 	}
+	rand       rand.Rand
 	labelValue []byte
 }
 
@@ -479,6 +480,7 @@ func precompileLabelTemplates(labelsTemplate map[string]string) *labelTemplates 
 	})
 	return &labelTemplates{
 		compiledTemplates: compiledTemplates,
+		rand:              *rand.New(rand.NewSource(time.Now().Unix())),
 	}
 }
 
@@ -542,10 +544,11 @@ func (c *Client) StoreFromPrecompiledTemplates(
 	buf := new(bytes.Buffer)
 	buf.Reset()
 
+	r := rand.New(rand.NewSource(time.Now().Unix()))
 	var err error
 	tsBuf := new(bytes.Buffer)
 	bigB[0] = 0xa
-	template.writeFor(tsBuf, valueBetween(minValue, maxValue), minSeriesID, timestamp)
+	template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), minSeriesID, timestamp)
 	bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len()))
 	buf.Write(bigB)
 	tsBuf.WriteTo(buf)
@@ -554,7 +557,7 @@ func (c *Client) StoreFromPrecompiledTemplates(
 	for seriesID := minSeriesID + 1; seriesID < maxSeriesID; seriesID++ {
 		tsBuf.Reset()
 		bigB[0] = 0xa
-		template.writeFor(tsBuf, valueBetween(minValue, maxValue), minSeriesID, timestamp)
+		template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), minSeriesID, timestamp)
 		bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len()))
 		buf.Write(bigB)
 		tsBuf.WriteTo(buf)
@@ -573,6 +576,6 @@ func (c *Client) StoreFromPrecompiledTemplates(
 	return res, nil
 }
 
-func valueBetween(min, max int) float64 {
-	return (rand.Float64() * float64(max-min)) + float64(min)
+func valueBetween(r *rand.Rand, min, max int) float64 {
+	return (r.Float64() * float64(max-min)) + float64(min)
 }
