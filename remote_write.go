@@ -557,7 +557,7 @@ func (c *Client) StoreFromPrecompiledTemplates(
 	for seriesID := minSeriesID + 1; seriesID < maxSeriesID; seriesID++ {
 		tsBuf.Reset()
 		bigB[0] = 0xa
-		template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), minSeriesID, timestamp)
+		template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), seriesID, timestamp)
 		bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len()))
 		buf.Write(bigB)
 		tsBuf.WriteTo(buf)
