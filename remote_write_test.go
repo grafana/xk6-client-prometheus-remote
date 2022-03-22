@@ -136,7 +136,7 @@ func TestStreamEncoding(t *testing.T) {
 	r = rand.New(rand.NewSource(seed))           // reset
 	minValue := 10
 	maxValue := 100000
-	// this is the upstream
+	// this is the upstream encoding. It is purposefully this "handwritten"
 	d, _ := proto.Marshal(&prompb.WriteRequest{
 		Timeseries: []prompb.TimeSeries{
 			{
