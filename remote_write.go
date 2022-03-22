@@ -168,6 +168,7 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 		return nil, errors.New("total_series must divide evenly into batches of size batch_size")
 	}
 
+	r := rand.New(rand.NewSource(time.Now().Unix()))
 	series := make([]Timeseries, batch_size)
 	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
 	for i := int64(0); i < batch_size; i++ {
@@ -186,7 +187,7 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 
 		series[i] = Timeseries{
 			labels,
-			[]Sample{{rand.Float64() * 100, timestamp}},
+			[]Sample{{r.Float64() * 100, timestamp}},
 		}
 	}
 
@@ -356,7 +357,7 @@ func compileTemplate(template string) func(int) string {
 	return func(_ int) string { return template }
 }
 
-func generateFromTemplates(minValue, maxValue int,
+func generateFromTemplates(r *rand.Rand, minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
 	labelsTemplate map[string]string,
 ) []prompb.TimeSeries {
@@ -389,7 +390,7 @@ func generateFromTemplates(minValue, maxValue int,
 			Labels: labels,
 			Samples: []prompb.Sample{
 				{
-					Value:     (rand.Float64() * float64(maxValue-minValue)) + float64(minValue),
+					Value:     valueBetween(r, minValue, maxValue),
 					Timestamp: timestamp,
 				},
 			},
@@ -404,5 +405,10 @@ func (c *Client) StoreFromTemplates(
 	timestamp int64, minSeriesID, maxSeriesID int,
 	labelsTemplate map[string]string,
 ) (httpext.Response, error) {
-	return c.store(generateFromTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, labelsTemplate))
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	return c.store(generateFromTemplates(r, minValue, maxValue, timestamp, minSeriesID, maxSeriesID, labelsTemplate))
+}
+
+func valueBetween(r *rand.Rand, min, max int) float64 {
+	return (r.Float64() * float64(max-min)) + float64(min)
 }

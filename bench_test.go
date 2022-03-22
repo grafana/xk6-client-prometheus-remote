@@ -3,10 +3,12 @@ package remotewrite
 import (
 	"context"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/oxtoacart/bpool"
@@ -122,9 +124,10 @@ func BenchmarkGenerateFromTemplates(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0
+		r := rand.New(rand.NewSource(time.Now().Unix()))
 		for pb.Next() {
 			i++
-			_ = generateFromTemplates(i, i+10, int64(i), 0, 100000, benchmarkLabels)
+			_ = generateFromTemplates(r, i, i+10, int64(i), 0, 100000, benchmarkLabels)
 		}
 	})
 }
@@ -134,9 +137,10 @@ func BenchmarkGenerateFromTemplatesAndMarshal(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0
+		r := rand.New(rand.NewSource(time.Now().Unix()))
 		for pb.Next() {
 			i++
-			batch := generateFromTemplates(i, i+10, int64(i), 0, 100000, benchmarkLabels)
+			batch := generateFromTemplates(r, i, i+10, int64(i), 0, 100000, benchmarkLabels)
 
 			req := prompb.WriteRequest{
 				Timeseries: batch,
