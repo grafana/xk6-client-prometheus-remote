@@ -102,10 +102,11 @@ func TestGenerateFromTemplates(t *testing.T) {
 			},
 		},
 	}
+	r := rand.New(rand.NewSource(time.Now().Unix()))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			compiled := precompileLabelTemplates(tt.args.labelsTemplate)
-			got := generateFromTemplates(tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, compiled)
+			got := generateFromTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, compiled)
 			if len(got) != len(tt.want.series) {
 				t.Errorf("Differing length, want: %d, got: %d", len(tt.want.series), len(got))
 			}

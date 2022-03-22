@@ -171,6 +171,7 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 		return nil, errors.New("total_series must divide evenly into batches of size batch_size")
 	}
 
+	r := rand.New(rand.NewSource(time.Now().Unix()))
 	series := make([]Timeseries, batch_size)
 	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
 	for i := int64(0); i < batch_size; i++ {
@@ -189,7 +190,7 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 
 		series[i] = Timeseries{
 			labels,
-			[]Sample{{rand.Float64() * 100, timestamp}},
+			[]Sample{{r.Float64() * 100, timestamp}},
 		}
 	}
 
@@ -424,7 +425,7 @@ type labelGenerator struct {
 	AppendByte func([]byte, int) []byte
 }
 
-func generateFromTemplates(minValue, maxValue int,
+func generateFromTemplates(r *rand.Rand, minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
 	template *labelTemplates,
 ) []prompb.TimeSeries {
@@ -442,7 +443,7 @@ func generateFromTemplates(minValue, maxValue int,
 			Labels: labels,
 			Samples: []prompb.Sample{
 				{
-					Value:     (rand.Float64() * float64(maxValue-minValue)) + float64(minValue),
+					Value:     (r.Float64() * float64(maxValue-minValue)) + float64(minValue),
 					Timestamp: timestamp,
 				},
 			},
@@ -458,7 +459,6 @@ type labelTemplates struct {
 		name      string
 		generator labelGenerator
 	}
-	rand       rand.Rand
 	labelValue []byte
 }
 
@@ -480,7 +480,6 @@ func precompileLabelTemplates(labelsTemplate map[string]string) *labelTemplates 
 	})
 	return &labelTemplates{
 		compiledTemplates: compiledTemplates,
-		rand:              *rand.New(rand.NewSource(time.Now().Unix())),
 	}
 }
 
