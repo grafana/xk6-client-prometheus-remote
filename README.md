@@ -114,6 +114,7 @@ const template = {
     __name__: 'k6_generated_metric_${series_id/4}',    // Name of the series.
     series_id: '${series_id}',                         // Each value of this label will match 1 series.
     cardinality_1e1: '${series_id/10}',                // Each value of this label will match 10 series.
+    cardinality_2: '${series_id%2}',                   // Each value of this label will match 2 series.
 };
 
 write_client.storeFromTemplates(
@@ -129,15 +130,15 @@ write_client.storeFromTemplates(
 The above code could generate and send the following 3 samples, values are randomly chosen from the defined range:
 
 ```
-Metric:    k6_generated_metric_10{cardinality_1e1="4", series_id="42"},
+Metric:    k6_generated_metric_10{cardinality_1e1="4", cardinality_2="0", series_id="42"},
 Timestamp: 16432354331000
 Value:     193
 ---
-Metric:    k6_generated_metric_10{cardinality_1e1="4", series_id="43"},
+Metric:    k6_generated_metric_10{cardinality_1e1="4", cardinality_2="1", series_id="43"},
 Timestamp: 16432354331000
 Value:     121
 ---
-Metric:    k6_generated_metric_11{cardinality_1e1="4", series_id="44"},
+Metric:    k6_generated_metric_11{cardinality_1e1="4", cardinality_2="0", series_id="44"},
 Timestamp: 16432354331000
 Value:     142
 ```
