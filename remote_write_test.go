@@ -251,8 +251,7 @@ func TestStreamEncoding(t *testing.T) {
 		"sixth": "some ${series_id/10} thing",
 	})
 
-	buf, err := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 22, template)
-	require.NoError(t, err)
+	buf := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 22, template)
 	b := buf.Bytes()
 	require.Equal(t, d, b)
 }

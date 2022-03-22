@@ -3,12 +3,16 @@ package remotewrite
 import (
 	"context"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/oxtoacart/bpool"
+	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/require"
 	"go.k6.io/k6/js/modulestest"
 	"go.k6.io/k6/lib"
@@ -134,4 +138,52 @@ func BenchmarkStoreFromTemplates(b *testing.B) {
 		require.NoError(b, err)
 	}
 	require.True(b, 1 <= *s.count) // this might need an atomic
+}
+
+func BenchmarkGenerateFromPrecompiledTemplates(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		r := rand.New(rand.NewSource(time.Now().Unix()))
+		i := 0
+		for pb.Next() {
+			template := precompileLabelTemplates(benchmarkLabels)
+			i++
+			_ = generateFromPrecompiledTemplates(r, i, i+10, int64(i), 0, 100000, template)
+		}
+	})
+}
+
+func BenchmarkGenerateFromTemplates(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		r := rand.New(rand.NewSource(time.Now().Unix()))
+		i := 0
+		for pb.Next() {
+			template := precompileLabelTemplates(benchmarkLabels)
+			i++
+			_ = generateFromTemplates(r, i, i+10, int64(i), 0, 100000, template)
+		}
+	})
+}
+
+func BenchmarkGenerateFromTemplatesAndMarshal(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		r := rand.New(rand.NewSource(time.Now().Unix()))
+		i := 0
+		for pb.Next() {
+			template := precompileLabelTemplates(benchmarkLabels)
+			i++
+			batch := generateFromTemplates(r, i, i+10, int64(i), 0, 100000, template)
+
+			req := prompb.WriteRequest{
+				Timeseries: batch,
+			}
+			_, err := proto.Marshal(&req)
+			require.NoError(b, err)
+		}
+	})
 }
