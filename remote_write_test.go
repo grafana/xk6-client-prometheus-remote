@@ -145,9 +145,11 @@ func TestStreamEncoding(t *testing.T) {
 					Timestamp: (timestamp),
 				}},
 				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 7 thing"},
 					{Name: "forth", Value: "some 15 thing"},
 					{Name: "here", Value: "else"},
 					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 1 thing"},
 					{Name: "third", Value: "some 1 thing"},
 				},
 			},
@@ -157,9 +159,11 @@ func TestStreamEncoding(t *testing.T) {
 					Timestamp: timestamp,
 				}},
 				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 8 thing"},
 					{Name: "forth", Value: "some 16 thing"},
 					{Name: "here", Value: "else"},
 					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 1 thing"},
 					{Name: "third", Value: "some 0 thing"},
 				},
 			},
@@ -172,6 +176,8 @@ func TestStreamEncoding(t *testing.T) {
 		"here2": "else2",
 		"third": "some ${series_id%2} thing",
 		"forth": "some ${series_id} thing",
+		"fifth": "some ${series_id/2} thing",
+		"sixth": "some ${series_id/10} thing",
 	})
 
 	buf, err := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 17, template)
