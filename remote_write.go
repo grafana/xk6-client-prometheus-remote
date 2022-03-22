@@ -327,6 +327,18 @@ func compileTemplate(template string) func(int) string {
 		return func(seriesID int) string {
 			return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
 		}
+	case '%':
+		end := strings.Index(template[i:], "}")
+		if end == -1 {
+			return func(_ int) string { return template }
+		}
+		d, err := strconv.Atoi(template[i+len("${series_id%") : i+end])
+		if err != nil {
+			return func(_ int) string { return template }
+		}
+		return func(seriesID int) string {
+			return template[:i] + strconv.Itoa(seriesID%d) + template[i+end+1:]
+		}
 	case '/':
 		end := strings.Index(template[i:], "}")
 		if end == -1 {
@@ -336,7 +348,6 @@ func compileTemplate(template string) func(int) string {
 		if err != nil {
 			return func(_ int) string { return template }
 		}
-
 		return func(seriesID int) string {
 			return template[:i] + strconv.Itoa(seriesID/d) + template[i+end+1:]
 		}
