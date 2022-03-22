@@ -536,15 +536,38 @@ func (c *Client) StoreFromPrecompiledTemplates(
 	timestamp int64, minSeriesID, maxSeriesID int,
 	template *labelTemplates,
 ) (httpext.Response, error) {
-	bigB := make([]byte, 1024)
 	state := c.vu.State()
 	if state == nil {
 		return *httpext.NewResponse(), errors.New("State is nil")
 	}
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	buf, err := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, minSeriesID, maxSeriesID, template)
+	if err != nil {
+		return *httpext.NewResponse(), errors.Wrap(err, "remote-write request failed")
+	}
+	b := buf.Bytes()
+	compressed := make([]byte, len(b)/9) // the general size is actually between 1/9 and 1/10th but this is closed enough
+	compressed = snappy.Encode(compressed, b)
+
+	res, err := c.send(state, compressed)
+	if err != nil {
+		return *httpext.NewResponse(), errors.Wrap(err, "remote-write request failed")
+	}
+	res.Request.Body = ""
+
+	return res, nil
+}
+
+func generateFromPrecompiledTemplates(
+	r *rand.Rand,
+	minValue, maxValue int,
+	timestamp int64, minSeriesID, maxSeriesID int,
+	template *labelTemplates,
+) (*bytes.Buffer, error) {
+	bigB := make([]byte, 1024)
 	buf := new(bytes.Buffer)
 	buf.Reset()
 
-	r := rand.New(rand.NewSource(time.Now().Unix()))
 	var err error
 	tsBuf := new(bytes.Buffer)
 	bigB[0] = 0xa
@@ -563,17 +586,7 @@ func (c *Client) StoreFromPrecompiledTemplates(
 		tsBuf.WriteTo(buf)
 	}
 
-	b := buf.Bytes()
-	compressed := make([]byte, len(b)/9) // the general size is actually between 1/9 and 1/10th but this is closed enough
-	compressed = snappy.Encode(compressed, b)
-
-	res, err := c.send(state, compressed)
-	if err != nil {
-		return *httpext.NewResponse(), errors.Wrap(err, "remote-write request failed")
-	}
-	res.Request.Body = ""
-
-	return res, nil
+	return buf, err
 }
 
 func valueBetween(r *rand.Rand, min, max int) float64 {

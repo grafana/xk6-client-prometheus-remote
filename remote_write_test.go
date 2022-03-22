@@ -10,7 +10,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/encoding/protowire"
 )
 
 /*
@@ -130,16 +129,19 @@ func TestGenerateFromTemplates(t *testing.T) {
 
 // this test that the prompb stream marshalling implementation produces the same result as the upstream one
 func TestStreamEncoding(t *testing.T) {
-	// TODO make this even bigger and more complicated
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	value := valueBetween(r, 10, 100)            // the value we will be setting 1
+	seed := time.Now().Unix()
+	t.Logf("seed=%d", seed)
+	r := rand.New(rand.NewSource(seed))
 	timestamp := int64(valueBetween(r, 10, 100)) // timestamp
+	r = rand.New(rand.NewSource(seed))           // reset
+	minValue := 10
+	maxValue := 100000
 	// this is the upstream
 	d, _ := proto.Marshal(&prompb.WriteRequest{
 		Timeseries: []prompb.TimeSeries{
 			{
 				Samples: []prompb.Sample{{
-					Value:     value,
+					Value:     valueBetween(r, minValue, maxValue),
 					Timestamp: (timestamp),
 				}},
 				Labels: []prompb.Label{
@@ -151,7 +153,7 @@ func TestStreamEncoding(t *testing.T) {
 			},
 			{
 				Samples: []prompb.Sample{{
-					Value:     value,
+					Value:     valueBetween(r, minValue, maxValue),
 					Timestamp: timestamp,
 				}},
 				Labels: []prompb.Label{
@@ -163,12 +165,8 @@ func TestStreamEncoding(t *testing.T) {
 			},
 		},
 	})
-	// stream implementation
-	bigB := make([]byte, 1024)
-	buf := new(bytes.Buffer)
-	buf.Grow(1024)
 
-	tsBuf := new(bytes.Buffer)
+	r = rand.New(rand.NewSource(seed)) // reset
 	template := precompileLabelTemplates(map[string]string{
 		"here":  "else",
 		"here2": "else2",
@@ -176,15 +174,8 @@ func TestStreamEncoding(t *testing.T) {
 		"forth": "some ${series_id} thing",
 	})
 
-	for seriesID := 15; seriesID < 17; seriesID++ {
-		tsBuf.Reset()
-		bigB[0] = 0xa
-		template.writeFor(tsBuf, value, seriesID, timestamp)
-		bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len()))
-		buf.Write(bigB)
-		tsBuf.WriteTo(buf)
-	}
-
+	buf, err := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 17, template)
+	require.NoError(t, err)
 	b := buf.Bytes()
 	require.Equal(t, d, b)
 }
