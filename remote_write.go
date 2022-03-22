@@ -337,8 +337,13 @@ func compileTemplate(template string) func(int) string {
 		if err != nil {
 			return func(_ int) string { return template }
 		}
+		possibleValuesS := make([]string, d)
+		// TODO have an upper limit
+		for j := 0; j < d; j++ {
+			possibleValuesS[j] = template[:i] + strconv.Itoa((j)) + template[i+end+1:]
+		}
 		return func(seriesID int) string {
-			return template[:i] + strconv.Itoa(seriesID%d) + template[i+end+1:]
+			return possibleValuesS[seriesID%d]
 		}
 	case '/':
 		end := strings.Index(template[i:], "}")
@@ -349,8 +354,16 @@ func compileTemplate(template string) func(int) string {
 		if err != nil {
 			return func(_ int) string { return template }
 		}
+		var memoizeS string
+		var memoizeSValue int
+
 		return func(seriesID int) string {
-			return template[:i] + strconv.Itoa(seriesID/d) + template[i+end+1:]
+			value := (seriesID / d)
+			if memoizeS == "" || value != memoizeSValue {
+				memoizeSValue = value
+				memoizeS = template[:i] + strconv.Itoa(value) + template[i+end+1:]
+			}
+			return memoizeS
 		}
 	}
 	// TODO error out when this get precompiled/optimized
