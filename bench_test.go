@@ -1,14 +1,19 @@
 package remotewrite
 
 import (
+	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
+	"github.com/oxtoacart/bpool"
+	"github.com/stretchr/testify/require"
 	"go.k6.io/k6/js/modulestest"
 	"go.k6.io/k6/lib"
+	"go.k6.io/k6/lib/metrics"
+	"go.k6.io/k6/stats"
 )
 
 func BenchmarkCompileTemplatesSimple(b *testing.B) {
@@ -53,52 +58,80 @@ var benchmarkLabels = map[string]string{
 	"cardinality_50":  "${series_id%50}",
 }
 
-func BenchmarkStoreFromPrecompiledTemplates(b *testing.B) {
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.Copy(ioutil.Discard, r.Body)
+type testServer struct {
+	server *httptest.Server
+	vu     *modulestest.VU
+	count  *int64
+}
+
+func newTestServer(tb testing.TB) *testServer {
+	ts := &testServer{
+		count: new(int64),
+	}
+
+	ts.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.Copy(io.Discard, r.Body)
 		w.WriteHeader(200)
+		atomic.AddInt64(ts.count, 1)
 	}))
-	b.Cleanup(func() {
-		s.Close()
+	ch := make(chan stats.SampleContainer)
+	tb.Cleanup(func() {
+		ts.server.Close()
+		close(ch) // this might need to be elsewhere
 	})
-	vu := new(modulestest.VU)
-	vu.StateField = new(lib.State)
+	ts.vu = new(modulestest.VU)
+	ts.vu.StateField = new(lib.State)
+	ts.vu.CtxField = context.Background()
+	ts.vu.StateField.Tags = lib.NewTagMap(nil)
+	ts.vu.StateField.Transport = ts.server.Client().Transport
+	ts.vu.StateField.BPool = bpool.NewBufferPool(123)
+	ts.vu.StateField.Samples = ch
+	ts.vu.StateField.BuiltinMetrics = metrics.RegisterBuiltinMetrics(metrics.NewRegistry())
+
+	go func() {
+		for range ch {
+		}
+	}()
+	return ts
+}
+
+func BenchmarkStoreFromPrecompiledTemplates(b *testing.B) {
+	s := newTestServer(b)
 	c := &Client{
 		client: &http.Client{},
 		cfg: &Config{
-			Url: s.URL,
+			Url:     s.server.URL,
+			Timeout: "100s",
 		},
-		vu: vu,
+		vu: s.vu,
 	}
 	template := precompileLabelTemplates(benchmarkLabels)
+
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		c.StoreFromPrecompiledTemplates(i, i+10, int64(i), 0, 100000, template)
+		_, err := c.StoreFromPrecompiledTemplates(i, i+10, int64(i), 0, 100000, template)
+		require.NoError(b, err)
 	}
+	require.True(b, 1 <= *s.count) // this might need an atomic
 }
 
 func BenchmarkStoreFromTemplates(b *testing.B) {
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.Copy(ioutil.Discard, r.Body)
-		w.WriteHeader(200)
-	}))
-	b.Cleanup(func() {
-		s.Close()
-	})
-	vu := new(modulestest.VU)
-	vu.StateField = new(lib.State)
+	s := newTestServer(b)
 	c := &Client{
 		client: &http.Client{},
 		cfg: &Config{
-			Url: s.URL,
+			Url:     s.server.URL,
+			Timeout: "100s",
 		},
-		vu: vu,
+		vu: s.vu,
 	}
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		c.StoreFromTemplates(i, i+10, int64(i), 0, 100000, benchmarkLabels)
+		_, err := c.StoreFromTemplates(i, i+10, int64(i), 0, 100000, benchmarkLabels)
+		require.NoError(b, err)
 	}
+	require.True(b, 1 <= *s.count) // this might need an atomic
 }
