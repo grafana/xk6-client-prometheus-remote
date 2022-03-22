@@ -36,7 +36,7 @@ func BenchmarkEvaluateTemplatesSimple(b *testing.B) {
 	t := compileTemplate("something ${series_id} else")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = t(1151234)
+		_ = t(i)
 	}
 }
 
@@ -44,7 +44,7 @@ func BenchmarkEvaluateTemplatesComplex(b *testing.B) {
 	t := compileTemplate("something ${series_id/1000} else")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = t(1151234)
+		_ = t(i)
 	}
 }
 
