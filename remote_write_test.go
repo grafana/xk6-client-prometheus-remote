@@ -167,6 +167,76 @@ func TestStreamEncoding(t *testing.T) {
 					{Name: "third", Value: "some 0 thing"},
 				},
 			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 8 thing"},
+					{Name: "forth", Value: "some 17 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 1 thing"},
+					{Name: "third", Value: "some 1 thing"},
+				},
+			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 9 thing"},
+					{Name: "forth", Value: "some 18 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 1 thing"},
+					{Name: "third", Value: "some 0 thing"},
+				},
+			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 9 thing"},
+					{Name: "forth", Value: "some 19 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 1 thing"},
+					{Name: "third", Value: "some 1 thing"},
+				},
+			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 10 thing"},
+					{Name: "forth", Value: "some 20 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 2 thing"},
+					{Name: "third", Value: "some 0 thing"},
+				},
+			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 10 thing"},
+					{Name: "forth", Value: "some 21 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 2 thing"},
+					{Name: "third", Value: "some 1 thing"},
+				},
+			},
 		},
 	})
 
@@ -180,7 +250,7 @@ func TestStreamEncoding(t *testing.T) {
 		"sixth": "some ${series_id/10} thing",
 	})
 
-	buf, err := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 17, template)
+	buf, err := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 22, template)
 	require.NoError(t, err)
 	b := buf.Bytes()
 	require.Equal(t, d, b)
