@@ -1,8 +1,10 @@
 package remotewrite
 
 import (
+	"math/rand"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/require"
@@ -110,7 +112,8 @@ func TestGenerateFromTemplates(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateFromTemplates(tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, tt.args.labelsTemplate)
+			r := rand.New(rand.NewSource(time.Now().Unix()))
+			got := generateFromTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, tt.args.labelsTemplate)
 			if len(got) != len(tt.want.series) {
 				t.Errorf("Differing length, want: %d, got: %d", len(tt.want.series), len(got))
 			}
