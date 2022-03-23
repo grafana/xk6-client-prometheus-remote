@@ -10,9 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/oxtoacart/bpool"
-	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/require"
 	"go.k6.io/k6/js/modulestest"
 	"go.k6.io/k6/lib"
@@ -38,8 +36,9 @@ func BenchmarkEvaluateTemplatesSimple(b *testing.B) {
 	t, err := compileTemplate("something ${series_id} else")
 	require.NoError(b, err)
 	b.ResetTimer()
+	var buf []byte
 	for i := 0; i < b.N; i++ {
-		_ = t.ToString(i)
+		buf = t.AppendByte(buf[:0], i)
 	}
 }
 
@@ -47,8 +46,9 @@ func BenchmarkEvaluateTemplatesComplex(b *testing.B) {
 	t, err := compileTemplate("something ${series_id/1000} else")
 	require.NoError(b, err)
 	b.ResetTimer()
+	var buf []byte
 	for i := 0; i < b.N; i++ {
-		_ = t.ToString(i)
+		buf = t.AppendByte(buf[:0], i)
 	}
 }
 
@@ -155,38 +155,6 @@ func BenchmarkGenerateFromPrecompiledTemplates(b *testing.B) {
 		for pb.Next() {
 			i++
 			_ = generateFromPrecompiledTemplates(r, i, i+10, int64(i), 0, 100000, template)
-		}
-	})
-}
-
-func BenchmarkGenerateFromTemplates(b *testing.B) {
-	b.ReportAllocs()
-	b.RunParallel(func(pb *testing.PB) {
-		r := rand.New(rand.NewSource(time.Now().Unix()))
-		i := 0
-		for pb.Next() {
-			i++
-			_, err := generateFromTemplates(r, i, i+10, int64(i), 0, 100000, benchmarkLabels)
-			require.NoError(b, err)
-		}
-	})
-}
-
-func BenchmarkGenerateFromTemplatesAndMarshal(b *testing.B) {
-	b.ReportAllocs()
-	b.RunParallel(func(pb *testing.PB) {
-		r := rand.New(rand.NewSource(time.Now().Unix()))
-		i := 0
-		for pb.Next() {
-			i++
-			batch, err := generateFromTemplates(r, i, i+10, int64(i), 0, 100000, benchmarkLabels)
-			require.NoError(b, err)
-
-			req := prompb.WriteRequest{
-				Timeseries: batch,
-			}
-			_, err = proto.Marshal(&req)
-			require.NoError(b, err)
 		}
 	})
 }
