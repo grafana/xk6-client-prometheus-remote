@@ -1,12 +1,14 @@
 package remotewrite
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/require"
 )
@@ -161,5 +163,158 @@ func TestGenerateFromTemplates(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// this test that the prompb stream marshalling implementation produces the same result as the upstream one
+func TestStreamEncoding(t *testing.T) {
+	seed := time.Now().Unix()
+	t.Logf("seed=%d", seed)
+	r := rand.New(rand.NewSource(seed))
+	timestamp := int64(valueBetween(r, 10, 100)) // timestamp
+	r = rand.New(rand.NewSource(seed))           // reset
+	minValue := 10
+	maxValue := 100000
+	// this is the upstream encoding. It is purposefully this "handwritten"
+	d, _ := proto.Marshal(&prompb.WriteRequest{
+		Timeseries: []prompb.TimeSeries{
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: (timestamp),
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 7 thing"},
+					{Name: "forth", Value: "some 15 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 1 thing"},
+					{Name: "third", Value: "some 1 thing"},
+				},
+			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 8 thing"},
+					{Name: "forth", Value: "some 16 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 1 thing"},
+					{Name: "third", Value: "some 0 thing"},
+				},
+			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 8 thing"},
+					{Name: "forth", Value: "some 17 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 1 thing"},
+					{Name: "third", Value: "some 1 thing"},
+				},
+			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 9 thing"},
+					{Name: "forth", Value: "some 18 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 1 thing"},
+					{Name: "third", Value: "some 0 thing"},
+				},
+			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 9 thing"},
+					{Name: "forth", Value: "some 19 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 1 thing"},
+					{Name: "third", Value: "some 1 thing"},
+				},
+			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 10 thing"},
+					{Name: "forth", Value: "some 20 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 2 thing"},
+					{Name: "third", Value: "some 0 thing"},
+				},
+			},
+			{
+				Samples: []prompb.Sample{{
+					Value:     valueBetween(r, minValue, maxValue),
+					Timestamp: timestamp,
+				}},
+				Labels: []prompb.Label{
+					{Name: "fifth", Value: "some 10 thing"},
+					{Name: "forth", Value: "some 21 thing"},
+					{Name: "here", Value: "else"},
+					{Name: "here2", Value: "else2"},
+					{Name: "sixth", Value: "some 2 thing"},
+					{Name: "third", Value: "some 1 thing"},
+				},
+			},
+		},
+	})
+
+	r = rand.New(rand.NewSource(seed)) // reset
+	template, err := compileLabelTemplates(map[string]string{
+		"here":  "else",
+		"here2": "else2",
+		"third": "some ${series_id%2} thing",
+		"forth": "some ${series_id} thing",
+		"fifth": "some ${series_id/2} thing",
+		"sixth": "some ${series_id/10} thing",
+	})
+	require.NoError(t, err)
+
+	buf := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 22, template)
+	b := buf.Bytes()
+	require.Equal(t, d, b)
+}
+
+func BenchmarkWriteFor(b *testing.B) {
+	tsBuf := new(bytes.Buffer)
+	template, err := compileLabelTemplates(map[string]string{
+		"__name__":        "k6_generated_metric_${series_id/1000}", // Name of the series.
+		"series_id":       "${series_id}",                          // Each value of this label will match 1 series.
+		"cardinality_1e1": "${series_id/10}",                       // Each value of this label will match 10 series.
+		"cardinality_1e2": "${series_id/100}",                      // Each value of this label will match 100 series.
+		"cardinality_1e3": "${series_id/1000}",                     // Each value of this label will match 1000 series.
+		"cardinality_1e4": "${series_id/10000}",                    // Each value of this label will match 10000 series.
+		"cardinality_1e5": "${series_id/100000}",                   // Each value of this label will match 100000 series.
+		"cardinality_1e6": "${series_id/1000000}",                  // Each value of this label will match 1000000 series.
+		"cardinality_1e7": "${series_id/10000000}",                 // Each value of this label will match 10000000 series.
+		"cardinality_1e8": "${series_id/100000000}",                // Each value of this label will match 100000000 series.
+		"cardinality_1e9": "${series_id/1000000000}",               // Each value of this label will match 1000000000 series.
+	})
+	require.NoError(b, err)
+	template.writeFor(tsBuf, 15, 15, 234)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		template.writeFor(tsBuf, 15, i, 234)
 	}
 }

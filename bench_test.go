@@ -103,6 +103,28 @@ func newTestServer(tb testing.TB) *testServer {
 	return ts
 }
 
+func BenchmarkStoreFromPrecompiledTemplates(b *testing.B) {
+	s := newTestServer(b)
+	c := &Client{
+		client: &http.Client{},
+		cfg: &Config{
+			Url:     s.server.URL,
+			Timeout: "100s",
+		},
+		vu: s.vu,
+	}
+	template, err := compileLabelTemplates(benchmarkLabels)
+	require.NoError(b, err)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := c.StoreFromPrecompiledTemplates(i, i+10, int64(i), 0, 100000, template)
+		require.NoError(b, err)
+	}
+	require.True(b, 1 <= *s.count) // this might need an atomic
+}
+
 func BenchmarkStoreFromTemplates(b *testing.B) {
 	s := newTestServer(b)
 	c := &Client{
@@ -123,12 +145,25 @@ func BenchmarkStoreFromTemplates(b *testing.B) {
 	require.True(b, 1 <= *s.count) // this might need an atomic
 }
 
+func BenchmarkGenerateFromPrecompiledTemplates(b *testing.B) {
+	b.ReportAllocs()
+	b.RunParallel(func(pb *testing.PB) {
+		r := rand.New(rand.NewSource(time.Now().Unix()))
+		i := 0
+		template, err := compileLabelTemplates(benchmarkLabels)
+		require.NoError(b, err)
+		for pb.Next() {
+			i++
+			_ = generateFromPrecompiledTemplates(r, i, i+10, int64(i), 0, 100000, template)
+		}
+	})
+}
+
 func BenchmarkGenerateFromTemplates(b *testing.B) {
 	b.ReportAllocs()
-	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
-		i := 0
 		r := rand.New(rand.NewSource(time.Now().Unix()))
+		i := 0
 		for pb.Next() {
 			i++
 			_, err := generateFromTemplates(r, i, i+10, int64(i), 0, 100000, benchmarkLabels)
@@ -139,10 +174,9 @@ func BenchmarkGenerateFromTemplates(b *testing.B) {
 
 func BenchmarkGenerateFromTemplatesAndMarshal(b *testing.B) {
 	b.ReportAllocs()
-	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
-		i := 0
 		r := rand.New(rand.NewSource(time.Now().Unix()))
+		i := 0
 		for pb.Next() {
 			i++
 			batch, err := generateFromTemplates(r, i, i+10, int64(i), 0, 100000, benchmarkLabels)
