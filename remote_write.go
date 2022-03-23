@@ -329,9 +329,6 @@ func compileTemplate(template string) (*labelGenerator, error) {
 	switch template[i+len("${series_id")] {
 	case '}':
 		return &labelGenerator{
-			ToString: func(seriesID int) string {
-				return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
-			},
 			AppendByte: func(b []byte, seriesID int) []byte {
 				b = append(b, template[:i]...)
 				b = strconv.AppendInt(b, int64(seriesID), 10)
@@ -356,15 +353,7 @@ func compileTemplate(template string) (*labelGenerator, error) {
 			b = strconv.AppendInt(b, int64(j), 10)
 			possibleValues[j] = append(b, template[i+end+1:]...)
 		}
-		possibleValuesS := make([]string, d)
-		// TODO have an upper limit
-		for j := 0; j < d; j++ {
-			possibleValuesS[j] = template[:i] + strconv.Itoa((j)) + template[i+end+1:]
-		}
 		return &labelGenerator{
-			ToString: func(seriesID int) string {
-				return possibleValuesS[seriesID%d]
-			},
 			AppendByte: func(b []byte, seriesID int) []byte {
 				return append(b, possibleValues[seriesID%d]...)
 			},
@@ -378,20 +367,9 @@ func compileTemplate(template string) (*labelGenerator, error) {
 		if err != nil {
 			return nil, err
 		}
-		var memoizeS string
-		var memoizeSValue int
-
 		var memoize []byte
 		var memoizeValue int64
 		return &labelGenerator{
-			ToString: func(seriesID int) string {
-				value := (seriesID / d)
-				if memoizeS == "" || value != memoizeSValue {
-					memoizeSValue = value
-					memoizeS = template[:i] + strconv.Itoa(value) + template[i+end+1:]
-				}
-				return memoizeS
-			},
 			AppendByte: func(b []byte, seriesID int) []byte {
 				value := int64(seriesID / d)
 				if memoize == nil || value != memoizeValue {
@@ -409,47 +387,13 @@ func compileTemplate(template string) (*labelGenerator, error) {
 }
 
 type labelGenerator struct {
-	ToString   func(int) string
 	AppendByte func([]byte, int) []byte
 }
 
 func newIdentityLabelGenerator(t string) *labelGenerator {
 	return &labelGenerator{
-		ToString:   func(int) string { return t },
 		AppendByte: func(b []byte, _ int) []byte { return append(b, t...) },
 	}
-}
-
-func generateFromTemplates(r *rand.Rand, minValue, maxValue int,
-	timestamp int64, minSeriesID, maxSeriesID int,
-	labelsTemplate map[string]string,
-) ([]prompb.TimeSeries, error) {
-	batchSize := maxSeriesID - minSeriesID
-	series := make([]prompb.TimeSeries, batchSize)
-
-	compiledTemplates, err := compileLabelTemplates(labelsTemplate)
-	if err != nil {
-		return nil, err
-	}
-	for seriesID := minSeriesID; seriesID < maxSeriesID; seriesID++ {
-		labels := make([]prompb.Label, len(labelsTemplate))
-		// TODO optimize
-		for i, template := range compiledTemplates.compiledTemplates {
-			labels[i] = prompb.Label{Name: template.name, Value: template.generator.ToString(seriesID)}
-		}
-
-		series[seriesID-minSeriesID] = prompb.TimeSeries{
-			Labels: labels,
-			Samples: []prompb.Sample{
-				{
-					Value:     valueBetween(r, minValue, maxValue),
-					Timestamp: timestamp,
-				},
-			},
-		}
-	}
-
-	return series, nil
 }
 
 // this is opaque on purpose so that it can't be done anything to from the js side

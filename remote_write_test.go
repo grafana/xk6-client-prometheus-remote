@@ -39,7 +39,7 @@ func TestEvaluateTemplate(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			result := compiled.ToString(testcase.value)
+			result := string(compiled.AppendByte(nil, testcase.value))
 			require.Equal(t, testcase.result, result)
 		})
 	}
@@ -143,7 +143,12 @@ func TestGenerateFromTemplates(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := rand.New(rand.NewSource(time.Now().Unix()))
-			got, err := generateFromTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, tt.args.labelsTemplate)
+			compiled, err := compileLabelTemplates(tt.args.labelsTemplate)
+			require.NoError(t, err)
+			buf := generateFromPrecompiledTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, compiled)
+			req := new(prompb.WriteRequest)
+			require.NoError(t, proto.Unmarshal(buf.Bytes(), req))
+			got := req.Timeseries
 			require.NoError(t, err)
 			if len(got) != len(tt.want.series) {
 				t.Errorf("Differing length, want: %d, got: %d", len(tt.want.series), len(got))
