@@ -22,29 +22,33 @@ import (
 
 func BenchmarkCompileTemplatesSimple(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = compileTemplate("something ${series_id} else")
+		_, err := compileTemplate("something ${series_id} else")
+		require.NoError(b, err)
 	}
 }
 
 func BenchmarkCompileTemplatesComplex(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = compileTemplate("something ${series_id/1000} else")
+		_, err := compileTemplate("something ${series_id/1000} else")
+		require.NoError(b, err)
 	}
 }
 
 func BenchmarkEvaluateTemplatesSimple(b *testing.B) {
-	t := compileTemplate("something ${series_id} else")
+	t, err := compileTemplate("something ${series_id} else")
+	require.NoError(b, err)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = t(i)
+		_ = t.ToString(i)
 	}
 }
 
 func BenchmarkEvaluateTemplatesComplex(b *testing.B) {
-	t := compileTemplate("something ${series_id/1000} else")
+	t, err := compileTemplate("something ${series_id/1000} else")
+	require.NoError(b, err)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = t(i)
+		_ = t.ToString(i)
 	}
 }
 
@@ -127,7 +131,8 @@ func BenchmarkGenerateFromTemplates(b *testing.B) {
 		r := rand.New(rand.NewSource(time.Now().Unix()))
 		for pb.Next() {
 			i++
-			_ = generateFromTemplates(r, i, i+10, int64(i), 0, 100000, benchmarkLabels)
+			_, err := generateFromTemplates(r, i, i+10, int64(i), 0, 100000, benchmarkLabels)
+			require.NoError(b, err)
 		}
 	})
 }
@@ -140,12 +145,13 @@ func BenchmarkGenerateFromTemplatesAndMarshal(b *testing.B) {
 		r := rand.New(rand.NewSource(time.Now().Unix()))
 		for pb.Next() {
 			i++
-			batch := generateFromTemplates(r, i, i+10, int64(i), 0, 100000, benchmarkLabels)
+			batch, err := generateFromTemplates(r, i, i+10, int64(i), 0, 100000, benchmarkLabels)
+			require.NoError(b, err)
 
 			req := prompb.WriteRequest{
 				Timeseries: batch,
 			}
-			_, err := proto.Marshal(&req)
+			_, err = proto.Marshal(&req)
 			require.NoError(b, err)
 		}
 	})
