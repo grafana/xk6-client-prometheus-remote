@@ -490,12 +490,11 @@ func (c *Client) StoreFromTemplates(
 	timestamp int64, minSeriesID, maxSeriesID int,
 	labelsTemplate map[string]string,
 ) (httpext.Response, error) {
-	r := rand.New(rand.NewSource(time.Now().Unix()))
-	ts, err := generateFromTemplates(r, minValue, maxValue, timestamp, minSeriesID, maxSeriesID, labelsTemplate)
+	template, err := compileLabelTemplates(labelsTemplate)
 	if err != nil {
-		return httpext.Response{}, err
+		return *httpext.NewResponse(), err
 	}
-	return c.store(ts)
+	return c.StoreFromPrecompiledTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, template)
 }
 
 func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesID int, timestamp int64) (err error) {
