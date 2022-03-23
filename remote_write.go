@@ -317,86 +317,86 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 // The only supported things are:
 // 1. replacing ${series_id} with the series_id provided
 // 2. replacing ${series_id/<integer>} with the evaluation of that
-// 3. if error in parsing just return the original
-func compileTemplate(template string) func(int) string {
+// 3. if error in parsing return error
+func compileTemplate(template string) (*labelGenerator, error) {
 	i := strings.Index(template, "${series_id")
 	if i == -1 {
-		return func(_ int) string { return template }
+		return newIdentityLabelGenerator(template), nil
 	}
 	switch template[i+len("${series_id")] {
 	case '}':
-		return func(seriesID int) string {
+		return &labelGenerator{ToString: func(seriesID int) string {
 			return template[:i] + strconv.Itoa(seriesID) + template[i+len("${series_id}"):]
-		}
+		}}, nil
 	case '%':
 		end := strings.Index(template[i:], "}")
 		if end == -1 {
-			return func(_ int) string { return template }
+			return nil, errors.New("no closing bracket in template")
 		}
 		d, err := strconv.Atoi(template[i+len("${series_id%") : i+end])
 		if err != nil {
-			return func(_ int) string { return template }
+			return nil, fmt.Errorf("can't parse divisor of the module operator %w", err)
 		}
 		possibleValuesS := make([]string, d)
 		// TODO have an upper limit
 		for j := 0; j < d; j++ {
 			possibleValuesS[j] = template[:i] + strconv.Itoa((j)) + template[i+end+1:]
 		}
-		return func(seriesID int) string {
+		return &labelGenerator{ToString: func(seriesID int) string {
 			return possibleValuesS[seriesID%d]
-		}
+		}}, nil
 	case '/':
 		end := strings.Index(template[i:], "}")
 		if end == -1 {
-			return func(_ int) string { return template }
+			return nil, errors.New("no closing bracket in template")
 		}
 		d, err := strconv.Atoi(template[i+len("${series_id/") : i+end])
 		if err != nil {
-			return func(_ int) string { return template }
+			return nil, err
 		}
 		var memoizeS string
 		var memoizeSValue int
 
-		return func(seriesID int) string {
-			value := (seriesID / d)
-			if memoizeS == "" || value != memoizeSValue {
-				memoizeSValue = value
-				memoizeS = template[:i] + strconv.Itoa(value) + template[i+end+1:]
-			}
-			return memoizeS
-		}
+		return &labelGenerator{
+			ToString: func(seriesID int) string {
+				value := (seriesID / d)
+				if memoizeS == "" || value != memoizeSValue {
+					memoizeSValue = value
+					memoizeS = template[:i] + strconv.Itoa(value) + template[i+end+1:]
+				}
+				return memoizeS
+			},
+		}, nil
 	}
-	// TODO error out when this get precompiled/optimized
-	return func(_ int) string { return template }
+	return nil, errors.New("unsupported template")
+}
+
+type labelGenerator struct {
+	ToString func(int) string
+}
+
+func newIdentityLabelGenerator(t string) *labelGenerator {
+	return &labelGenerator{
+		ToString: func(int) string { return t },
+	}
 }
 
 func generateFromTemplates(r *rand.Rand, minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
 	labelsTemplate map[string]string,
-) []prompb.TimeSeries {
+) ([]prompb.TimeSeries, error) {
 	batchSize := maxSeriesID - minSeriesID
 	series := make([]prompb.TimeSeries, batchSize)
 
-	compiledTemplates := make([]struct {
-		name     string
-		template func(int) string
-	}, len(labelsTemplate))
-	{
-		i := 0
-		for k, v := range labelsTemplate {
-			compiledTemplates[i].name = k
-			compiledTemplates[i].template = compileTemplate(v)
-			i++
-		}
+	compiledTemplates, err := compileLabelTemplates(labelsTemplate)
+	if err != nil {
+		return nil, err
 	}
-	sort.Slice(compiledTemplates, func(i, j int) bool {
-		return compiledTemplates[i].name < compiledTemplates[j].name
-	})
 	for seriesID := minSeriesID; seriesID < maxSeriesID; seriesID++ {
 		labels := make([]prompb.Label, len(labelsTemplate))
 		// TODO optimize
 		for i, template := range compiledTemplates {
-			labels[i] = prompb.Label{Name: template.name, Value: template.template(seriesID)}
+			labels[i] = prompb.Label{Name: template.name, Value: template.generator.ToString(seriesID)}
 		}
 
 		series[seriesID-minSeriesID] = prompb.TimeSeries{
@@ -410,7 +410,32 @@ func generateFromTemplates(r *rand.Rand, minValue, maxValue int,
 		}
 	}
 
-	return series
+	return series, nil
+}
+
+type compiledTemplate struct {
+	name      string
+	generator *labelGenerator
+}
+
+func compileLabelTemplates(labelsTemplate map[string]string) ([]compiledTemplate, error) {
+	compiledTemplates := make([]compiledTemplate, len(labelsTemplate))
+	{
+		i := 0
+		var err error
+		for k, v := range labelsTemplate {
+			compiledTemplates[i].name = k
+			compiledTemplates[i].generator, err = compileTemplate(v)
+			if err != nil {
+				return nil, fmt.Errorf("error while compiling template %q, %w", v, err)
+			}
+			i++
+		}
+	}
+	sort.Slice(compiledTemplates, func(i, j int) bool {
+		return compiledTemplates[i].name < compiledTemplates[j].name
+	})
+	return compiledTemplates, nil
 }
 
 func (c *Client) StoreFromTemplates(
@@ -419,7 +444,11 @@ func (c *Client) StoreFromTemplates(
 	labelsTemplate map[string]string,
 ) (httpext.Response, error) {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	return c.store(generateFromTemplates(r, minValue, maxValue, timestamp, minSeriesID, maxSeriesID, labelsTemplate))
+	ts, err := generateFromTemplates(r, minValue, maxValue, timestamp, minSeriesID, maxSeriesID, labelsTemplate)
+	if err != nil {
+		return httpext.Response{}, err
+	}
+	return c.store(ts)
 }
 
 func valueBetween(r *rand.Rand, min, max int) float64 {

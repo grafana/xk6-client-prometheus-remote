@@ -1,6 +1,7 @@
 package remotewrite
 
 import (
+	"fmt"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -11,8 +12,35 @@ import (
 )
 
 func TestEvaluateTemplate(t *testing.T) {
-	require.Equal(t, compileTemplate("something ${series_id} else")(12), "something 12 else")
-	require.Equal(t, compileTemplate("something ${series_id/6} else")(12), "something 2 else")
+	testcases := []struct {
+		template      string
+		value         int
+		result        string
+		expectedError string
+	}{
+		{template: "something ${series_id} else", value: 12, result: "something 12 else"},
+		{template: "something ${series_id else", expectedError: "unsupported template"},
+		{template: "something ${series_id/6} else", value: 12, result: "something 2 else"},
+		{template: "something ${series_id/6 else", expectedError: "closing bracket"},
+		{template: "something ${series_id%6} else", value: 12, result: "something 0 else"},
+		{template: "something ${series_id%6 else", expectedError: "closing bracket"},
+		{template: "something ${series_id*6} else", expectedError: "unsupported template"},
+		{template: "something else", result: "something else"},
+	}
+	for _, testcase := range testcases {
+		testcase := testcase
+		t.Run(fmt.Sprintf("template=%q,value=%d", testcase.template, testcase.value), func(t *testing.T) {
+			compiled, err := compileTemplate(testcase.template)
+			if testcase.expectedError != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), testcase.expectedError)
+				return
+			}
+			require.NoError(t, err)
+			result := compiled.ToString(testcase.value)
+			require.Equal(t, testcase.result, result)
+		})
+	}
 }
 
 func TestGenerateFromTemplates(t *testing.T) {
@@ -113,7 +141,8 @@ func TestGenerateFromTemplates(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := rand.New(rand.NewSource(time.Now().Unix()))
-			got := generateFromTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, tt.args.labelsTemplate)
+			got, err := generateFromTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, tt.args.labelsTemplate)
+			require.NoError(t, err)
 			if len(got) != len(tt.want.series) {
 				t.Errorf("Differing length, want: %d, got: %d", len(tt.want.series), len(got))
 			}
