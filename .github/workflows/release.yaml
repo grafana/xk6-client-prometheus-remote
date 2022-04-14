@@ -16,7 +16,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.16.7'
+          go-version: '1.17.x'
       - name: Install xk6
         run: go install go.k6.io/xk6/cmd/xk6@latest
       - name: Build a new k6 binary with the remote write extension
