@@ -14,8 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.k6.io/k6/js/modulestest"
 	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/metrics"
-	"go.k6.io/k6/stats"
+	"go.k6.io/k6/metrics"
 )
 
 func BenchmarkCompileTemplatesSimple(b *testing.B) {
@@ -82,7 +81,7 @@ func newTestServer(tb testing.TB) *testServer {
 		w.WriteHeader(200)
 		atomic.AddInt64(ts.count, 1)
 	}))
-	ch := make(chan stats.SampleContainer)
+	ch := make(chan metrics.SampleContainer)
 	tb.Cleanup(func() {
 		ts.server.Close()
 		close(ch) // this might need to be elsewhere
