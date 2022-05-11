@@ -929,8 +929,8 @@ github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9dec
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/etcd v0.0.0-20191023171146-3cf2f69b5738/go.mod h1:dnLIgRNXwCJa5e+c6mIZCrds/GIG4ncV9HhK5PX7jPg=
-go.k6.io/k6 v0.38.1 h1:s/XTX00SD4FJuwN79MR3KxAnMEPhqq9neT7ZIH/7lPQ=
-go.k6.io/k6 v0.38.1/go.mod h1:1bTdDsXTT2V3in3ZgdR15MDW6SQQh5nWni59tirqNB8=
+go.k6.io/k6 v0.38.2 h1:v4Dr7KhZVf+s6V6oz/pGtQ9ejTfNgUPcd/D3RH3GVdY=
+go.k6.io/k6 v0.38.2/go.mod h1:1bTdDsXTT2V3in3ZgdR15MDW6SQQh5nWni59tirqNB8=
 go.mongodb.org/mongo-driver v1.0.3/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.1.1/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.1.2/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
