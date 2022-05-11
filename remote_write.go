@@ -67,10 +67,11 @@ type Client struct {
 }
 
 type Config struct {
-	Url        string `json:"url"`
-	UserAgent  string `json:"user_agent"`
-	Timeout    string `json:"timeout"`
-	TenantName string `json:"tenant_name"`
+	Url        string            `json:"url"`
+	UserAgent  string            `json:"user_agent"`
+	Timeout    string            `json:"timeout"`
+	TenantName string            `json:"tenant_name"`
+	Headers    map[string]string `json:"headers"`
 }
 
 // xclient represents
@@ -253,6 +254,12 @@ func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 	if err != nil {
 		return *httpResp, err
 	}
+
+	for k, v := range c.cfg.Headers {
+		r.Header.Set(k, v)
+	}
+
+	// explicit config overwrites any previously set matching headers
 	r.Header.Add("Content-Encoding", "snappy")
 	r.Header.Set("Content-Type", "application/x-protobuf")
 	r.Header.Set("User-Agent", c.cfg.UserAgent)
