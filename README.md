@@ -4,6 +4,8 @@ This extension adds Prometheus Remote Write testing capabilities to [k6](https:/
 
 It is implemented using the [xk6](https://k6.io/blog/extending-k6-with-xk6/) system.
 
+> :warning: Not to be confused with [Prometheus remote write **output** extension](https://github.com/grafana/xk6-output-prometheus-remote) which is publishing test-run metrics to Prometheus.
+
 ## Getting started  
 
 To start using k6 with the extension you can:
