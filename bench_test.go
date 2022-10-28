@@ -81,19 +81,21 @@ func newTestServer(tb testing.TB) *testServer {
 		w.WriteHeader(200)
 		atomic.AddInt64(ts.count, 1)
 	}))
+	registry := metrics.NewRegistry()
 	ch := make(chan metrics.SampleContainer)
 	tb.Cleanup(func() {
 		ts.server.Close()
 		close(ch) // this might need to be elsewhere
 	})
 	ts.vu = new(modulestest.VU)
-	ts.vu.StateField = new(lib.State)
 	ts.vu.CtxField = context.Background()
-	ts.vu.StateField.Tags = lib.NewTagMap(nil)
+
+	ts.vu.StateField = new(lib.State)
 	ts.vu.StateField.Transport = ts.server.Client().Transport
 	ts.vu.StateField.BPool = bpool.NewBufferPool(123)
 	ts.vu.StateField.Samples = ch
-	ts.vu.StateField.BuiltinMetrics = metrics.RegisterBuiltinMetrics(metrics.NewRegistry())
+	ts.vu.StateField.BuiltinMetrics = metrics.RegisterBuiltinMetrics(registry)
+	ts.vu.StateField.Tags = lib.NewVUStateTags(registry.RootTagSet())
 
 	go func() {
 		for range ch {

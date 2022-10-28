@@ -280,6 +280,7 @@ func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 		Redirects:        state.Options.MaxRedirects,
 		Timeout:          duration,
 		ResponseCallback: ResponseCallback,
+		TagsAndMeta:      state.Tags.GetCurrentValues(),
 	})
 	if err != nil {
 		return *httpResp, err
