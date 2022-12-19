@@ -257,6 +257,9 @@ func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 
 	for k, v := range c.cfg.Headers {
 		r.Header.Set(k, v)
+		if k == "Host" {
+			r.Host = v
+		}
 	}
 
 	// explicit config overwrites any previously set matching headers
