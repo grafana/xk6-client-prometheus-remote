@@ -42,7 +42,14 @@ export let options = {
 };
 
 const client = new remote.Client({
-    url: "<your-remote-write-url>"
+    url: "<your-remote-write-url>",
+    // all settings below are optional
+    // enable multitenancy  
+    tenant_name: "load-test",
+    // add oauth credentials (tenant also needs to be setup, since used for oauth scope)
+    client_id: "load-test",
+    client_secret: "load-test-secret",
+    auth_url: "https://ouath2.server/client/login",
 });
 
 export default function () {

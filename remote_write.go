@@ -61,17 +61,21 @@ func (r *RemoteWrite) Exports() modules.Exports {
 
 // Client is the client wrapper.
 type Client struct {
-	client *http.Client
-	cfg    *Config
-	vu     modules.VU
+	client    *http.Client
+	cfg       *Config
+	vu        modules.VU
+	oauth2Cli *oauth2Client
 }
 
 type Config struct {
-	Url        string            `json:"url"`
-	UserAgent  string            `json:"user_agent"`
-	Timeout    string            `json:"timeout"`
-	TenantName string            `json:"tenant_name"`
-	Headers    map[string]string `json:"headers"`
+	Url          string            `json:"url"`
+	UserAgent    string            `json:"user_agent"`
+	Timeout      string            `json:"timeout"`
+	TenantName   string            `json:"tenant_name"`
+	Headers      map[string]string `json:"headers"`
+	ClientID     string            `json:"client_id"`
+	ClientSecret string            `json:"client_secret"`
+	AuthUrl      string            `json:"auth_url"`
 }
 
 // xclient represents
@@ -92,11 +96,17 @@ func (r *RemoteWrite) xclient(c goja.ConstructorCall) *goja.Object {
 		config.Timeout = "10s"
 	}
 
-	return rt.ToValue(&Client{
+	xcli := &Client{
 		client: &http.Client{},
 		cfg:    &config,
 		vu:     r.vu,
-	}).ToObject(rt)
+	}
+
+	if config.TenantName != "" && config.ClientID != "" && config.ClientSecret != "" && config.AuthUrl != "" {
+		xcli.oauth2Cli = NewOAuth2(config)
+	}
+
+	return rt.ToValue(xcli).ToObject(rt)
 }
 
 type Timeseries struct {
@@ -269,6 +279,14 @@ func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 	r.Header.Set("X-Prometheus-Remote-Write-Version", "0.0.2")
 	if c.cfg.TenantName != "" {
 		r.Header.Set("X-Scope-OrgID", c.cfg.TenantName)
+	}
+	if c.oauth2Cli != nil {
+		token, err := c.oauth2Cli.GetAuthToken()
+		if err == nil {
+			r.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+		} else {
+			return *httpResp, err
+		}
 	}
 
 	duration, err := str2duration.ParseDuration(c.cfg.Timeout)

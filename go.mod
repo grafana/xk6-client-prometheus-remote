@@ -12,7 +12,8 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/xhit/go-str2duration/v2 v2.0.0
 	go.k6.io/k6 v0.41.0
-	google.golang.org/protobuf v1.27.1
+	golang.org/x/oauth2 v0.4.0
+	google.golang.org/protobuf v1.28.0
 )
 
 require (
@@ -38,10 +39,11 @@ require (
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/afero v1.2.2 // indirect
 	golang.org/x/crypto v0.0.0-20220926161630-eccd6366d1be // indirect
-	golang.org/x/net v0.0.0-20221002022538-bcab6841153b // indirect
-	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/net v0.5.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af // indirect
+	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/guregu/null.v3 v3.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
