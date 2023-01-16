@@ -12,17 +12,14 @@ type oauth2Client struct {
 }
 
 func NewOAuth2(c Config) *oauth2Client {
-	oauth2conf := &clientcredentials.Config{
-		ClientID:     c.ClientID,
-		ClientSecret: c.ClientSecret,
-		TokenURL:     c.AuthUrl,
-		Scopes:       []string{c.TenantName},
+	return &oauth2Client{
+		config: &clientcredentials.Config{
+			ClientID:     c.ClientID,
+			ClientSecret: c.ClientSecret,
+			TokenURL:     c.AuthUrl,
+			Scopes:       []string{c.TenantName},
+		},
 	}
-	a := oauth2Client{
-		config: oauth2conf,
-	}
-
-	return &a
 }
 
 func (a *oauth2Client) GetAuthToken() (string, error) {
