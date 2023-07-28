@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oxtoacart/bpool"
 	"github.com/stretchr/testify/require"
 	"go.k6.io/k6/js/modulestest"
 	"go.k6.io/k6/lib"
@@ -92,7 +91,7 @@ func newTestServer(tb testing.TB) *testServer {
 
 	ts.vu.StateField = new(lib.State)
 	ts.vu.StateField.Transport = ts.server.Client().Transport
-	ts.vu.StateField.BPool = bpool.NewBufferPool(123)
+	ts.vu.StateField.BufferPool = lib.NewBufferPool()
 	ts.vu.StateField.Samples = ch
 	ts.vu.StateField.BuiltinMetrics = metrics.RegisterBuiltinMetrics(registry)
 	ts.vu.StateField.Tags = lib.NewVUStateTags(registry.RootTagSet())
