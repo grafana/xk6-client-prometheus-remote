@@ -6,7 +6,6 @@ require (
 	github.com/dop251/goja v0.0.0-20230531210528-d7324b2d74f7
 	github.com/golang/protobuf v1.5.3
 	github.com/golang/snappy v0.0.4
-	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/prometheus v1.8.2-0.20210621150501-ff58416a0b02
 	github.com/stretchr/testify v1.8.2
