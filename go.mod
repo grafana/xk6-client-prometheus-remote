@@ -10,8 +10,8 @@ require (
 	github.com/prometheus/prometheus v1.8.2-0.20210621150501-ff58416a0b02
 	github.com/stretchr/testify v1.8.2
 	github.com/xhit/go-str2duration/v2 v2.0.0
-	go.k6.io/k6 v0.45.0
-	google.golang.org/protobuf v1.30.0
+	go.k6.io/k6 v0.45.1
+	google.golang.org/protobuf v1.31.0
 )
 
 require (
