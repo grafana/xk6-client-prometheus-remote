@@ -250,7 +250,7 @@ func (c *Client) store(batch []prompb.TimeSeries) (httpext.Response, error) {
 // and encoded bytes
 func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 	httpResp := httpext.NewResponse()
-	r, err := http.NewRequest("POST", c.cfg.Url, nil)
+	r, err := http.NewRequest(http.MethodPost, c.cfg.Url, nil)
 	if err != nil {
 		return *httpResp, err
 	}
@@ -300,7 +300,7 @@ func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 }
 
 func ResponseCallback(n int) bool {
-	return n == 200
+	return n/100 == 2
 }
 
 func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
