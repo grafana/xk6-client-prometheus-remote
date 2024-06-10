@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dop251/goja"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/snappy"
+	"github.com/grafana/sobek"
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/xhit/go-str2duration/v2"
@@ -75,7 +75,7 @@ type Config struct {
 }
 
 // xclient represents
-func (r *RemoteWrite) xclient(c goja.ConstructorCall) *goja.Object {
+func (r *RemoteWrite) xclient(c sobek.ConstructorCall) *sobek.Object {
 	var config Config
 	rt := r.vu.Runtime()
 	err := rt.ExportTo(c.Argument(0), &config)
@@ -113,10 +113,10 @@ type Sample struct {
 	Timestamp int64
 }
 
-func (r *RemoteWrite) sample(c goja.ConstructorCall) *goja.Object {
+func (r *RemoteWrite) sample(c sobek.ConstructorCall) *sobek.Object {
 	rt := r.vu.Runtime()
-	call, _ := goja.AssertFunction(rt.ToValue(xsample))
-	v, err := call(goja.Undefined(), c.Arguments...)
+	call, _ := sobek.AssertFunction(rt.ToValue(xsample))
+	v, err := call(sobek.Undefined(), c.Arguments...)
 	if err != nil {
 		common.Throw(rt, err)
 	}
@@ -130,10 +130,10 @@ func xsample(value float64, timestamp int64) Sample {
 	}
 }
 
-func (r *RemoteWrite) timeseries(c goja.ConstructorCall) *goja.Object {
+func (r *RemoteWrite) timeseries(c sobek.ConstructorCall) *sobek.Object {
 	rt := r.vu.Runtime()
-	call, _ := goja.AssertFunction(rt.ToValue(xtimeseries))
-	v, err := call(goja.Undefined(), c.Arguments...)
+	call, _ := sobek.AssertFunction(rt.ToValue(xtimeseries))
+	v, err := call(sobek.Undefined(), c.Arguments...)
 	if err != nil {
 		common.Throw(rt, err)
 	}
