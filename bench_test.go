@@ -106,7 +106,6 @@ func newTestServer(tb testing.TB) *testServer {
 func BenchmarkStoreFromPrecompiledTemplates(b *testing.B) {
 	s := newTestServer(b)
 	c := &Client{
-		client: &http.Client{},
 		cfg: &Config{
 			Url:     s.server.URL,
 			Timeout: "100s",
@@ -128,7 +127,6 @@ func BenchmarkStoreFromPrecompiledTemplates(b *testing.B) {
 func BenchmarkStoreFromTemplates(b *testing.B) {
 	s := newTestServer(b)
 	c := &Client{
-		client: &http.Client{},
 		cfg: &Config{
 			Url:     s.server.URL,
 			Timeout: "100s",
