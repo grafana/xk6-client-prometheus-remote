@@ -61,9 +61,8 @@ func (r *RemoteWrite) Exports() modules.Exports {
 
 // Client is the client wrapper.
 type Client struct {
-	client *http.Client
-	cfg    *Config
-	vu     modules.VU
+	cfg *Config
+	vu  modules.VU
 }
 
 type Config struct {
@@ -93,9 +92,8 @@ func (r *RemoteWrite) xclient(c sobek.ConstructorCall) *sobek.Object {
 	}
 
 	return rt.ToValue(&Client{
-		client: &http.Client{},
-		cfg:    &config,
-		vu:     r.vu,
+		cfg: &config,
+		vu:  r.vu,
 	}).ToObject(rt)
 }
 
