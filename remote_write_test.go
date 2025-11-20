@@ -36,9 +36,12 @@ func TestEvaluateTemplate(t *testing.T) {
 			if testcase.expectedError != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), testcase.expectedError)
+
 				return
 			}
+
 			require.NoError(t, err)
+
 			result := string(compiled.AppendByte(nil, testcase.value))
 			require.Equal(t, testcase.result, result)
 		})
@@ -54,11 +57,13 @@ func TestGenerateFromTemplates(t *testing.T) {
 		maxSeriesID    int
 		labelsTemplate map[string]string
 	}
+
 	type want struct {
 		valueMin float64
 		valueMax float64
 		series   []prompb.TimeSeries
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -145,11 +150,15 @@ func TestGenerateFromTemplates(t *testing.T) {
 			r := rand.New(rand.NewSource(time.Now().Unix()))
 			compiled, err := compileLabelTemplates(tt.args.labelsTemplate)
 			require.NoError(t, err)
+
 			buf := generateFromPrecompiledTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, compiled)
 			req := new(prompb.WriteRequest)
+
 			require.NoError(t, proto.Unmarshal(buf.Bytes(), req))
 			got := req.Timeseries
+
 			require.NoError(t, err)
+
 			if len(got) != len(tt.want.series) {
 				t.Errorf("Differing length, want: %d, got: %d", len(tt.want.series), len(got))
 			}
@@ -319,6 +328,7 @@ func BenchmarkWriteFor(b *testing.B) {
 	template.writeFor(tsBuf, 15, 15, 234)
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		template.writeFor(tsBuf, 15, i, 234)
 	}

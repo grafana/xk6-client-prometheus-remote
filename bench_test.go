@@ -34,7 +34,9 @@ func BenchmarkEvaluateTemplatesSimple(b *testing.B) {
 	t, err := compileTemplate("something ${series_id} else")
 	require.NoError(b, err)
 	b.ResetTimer()
+
 	var buf []byte
+
 	for i := 0; i < b.N; i++ {
 		buf = t.AppendByte(buf[:0], i)
 	}
@@ -44,7 +46,9 @@ func BenchmarkEvaluateTemplatesComplex(b *testing.B) {
 	t, err := compileTemplate("something ${series_id/1000} else")
 	require.NoError(b, err)
 	b.ResetTimer()
+
 	var buf []byte
+
 	for i := 0; i < b.N; i++ {
 		buf = t.AppendByte(buf[:0], i)
 	}
@@ -82,10 +86,12 @@ func newTestServer(tb testing.TB) *testServer {
 	}))
 	registry := metrics.NewRegistry()
 	ch := make(chan metrics.SampleContainer)
+
 	tb.Cleanup(func() {
 		ts.server.Close()
 		close(ch) // this might need to be elsewhere
 	})
+
 	ts.vu = new(modulestest.VU)
 	ts.vu.CtxField = context.Background()
 
@@ -100,6 +106,7 @@ func newTestServer(tb testing.TB) *testServer {
 		for range ch {
 		}
 	}()
+
 	return ts
 }
 
@@ -117,10 +124,12 @@ func BenchmarkStoreFromPrecompiledTemplates(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := c.StoreFromPrecompiledTemplates(i, i+10, int64(i), 0, 100000, template)
 		require.NoError(b, err)
 	}
+
 	require.True(b, 1 <= *s.count) // this might need an atomic
 }
 
@@ -136,10 +145,12 @@ func BenchmarkStoreFromTemplates(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := c.StoreFromTemplates(i, i+10, int64(i), 0, 100000, benchmarkLabels)
 		require.NoError(b, err)
 	}
+
 	require.True(b, 1 <= *s.count) // this might need an atomic
 }
 
@@ -150,6 +161,7 @@ func BenchmarkGenerateFromPrecompiledTemplates(b *testing.B) {
 		i := 0
 		template, err := compileLabelTemplates(benchmarkLabels)
 		require.NoError(b, err)
+
 		for pb.Next() {
 			i++
 			_ = generateFromPrecompiledTemplates(r, i, i+10, int64(i), 0, 100000, template)
