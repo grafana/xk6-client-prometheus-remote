@@ -548,7 +548,7 @@ func (c *Client) store(batch []prompb.TimeSeries) (httpext.Response, error) {
 func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 	httpResp := httpext.NewResponse()
 
-	r, err := http.NewRequest(http.MethodPost, c.cfg.Url, nil)
+	r, err := http.NewRequestWithContext(c.vu.Context(), http.MethodPost, c.cfg.Url, nil)
 	if err != nil {
 		return *httpResp, err
 	}
