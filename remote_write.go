@@ -30,6 +30,13 @@ import (
 	"google.golang.org/protobuf/encoding/protowire"
 )
 
+var (
+	// ErrInvalidConfig is returned when the client configuration is invalid.
+	ErrInvalidConfig = errors.New("Client constructor expects first argument to be Config")
+	// ErrURLRequired is returned when the URL is not provided in the configuration.
+	ErrURLRequired = errors.New("url is required")
+)
+
 // Register the extension on module initialization, available to
 // import from JS as "k6/x/remotewrite".
 func init() {
@@ -86,11 +93,11 @@ func (r *RemoteWrite) xclient(c sobek.ConstructorCall) *sobek.Object {
 
 	err := rt.ExportTo(c.Argument(0), &config)
 	if err != nil {
-		common.Throw(rt, fmt.Errorf("Client constructor expects first argument to be Config"))
+		common.Throw(rt, ErrInvalidConfig)
 	}
 
 	if config.Url == "" {
-		log.Fatal(fmt.Errorf("url is required"))
+		log.Fatal(ErrURLRequired)
 	}
 
 	if config.UserAgent == "" {
