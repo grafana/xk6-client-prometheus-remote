@@ -182,6 +182,7 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 		return nil, errors.New("total_series must divide evenly into batches of size batch_size")
 	}
 
+	// #nosec G404 -- This is test data generation for load testing, not cryptographic use
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	series := make([]Timeseries, batch_size)
 	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
@@ -504,10 +505,10 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 		n1 := len(labelValue)
 		labelValue = template.generator.AppendByte(labelValue, seriesID)
 		n2 := len(labelValue)
-		labelValue = protowire.AppendVarint(labelValue, uint64(n2-n1))
+		labelValue = protowire.AppendVarint(labelValue, uint64(n2-n1)) // #nosec G115 -- len() result is always non-negative
 		n3 := len(labelValue)
 
-		labelValue = protowire.AppendVarint(labelValue, uint64(n3+1+1+len(template.name)))
+		labelValue = protowire.AppendVarint(labelValue, uint64(n3+1+1+len(template.name))) // #nosec G115 -- len() result is always non-negative
 		w.Write(labelValue[n3:])
 		w.WriteByte(0xa)
 		w.Write(labelValue[:n1])
@@ -521,7 +522,7 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 	labelValue[0] = 0x9
 	binary.LittleEndian.PutUint64(labelValue[1:9], uint64(math.Float64bits(value)))
 	labelValue[9] = 0x10
-	labelValue = protowire.AppendVarint(labelValue, uint64(timestamp))
+	labelValue = protowire.AppendVarint(labelValue, uint64(timestamp)) // #nosec G115 -- timestamp is always positive milliseconds since Unix epoch
 
 	n := len(labelValue)
 	labelValue = labelValue[:n+1]
@@ -544,6 +545,7 @@ func (c *Client) StoreFromPrecompiledTemplates(
 		return *httpext.NewResponse(), errors.New("State is nil")
 	}
 
+	// #nosec G404 -- This is test data generation for load testing, not cryptographic use
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	buf := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, minSeriesID, maxSeriesID, template)
 	b := buf.Bytes()
@@ -574,7 +576,7 @@ func generateFromPrecompiledTemplates(
 	bigB[0] = 0xa
 
 	template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), minSeriesID, timestamp)
-	bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len()))
+	bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len())) // #nosec G115 -- buffer Len() is always non-negative
 	buf.Write(bigB)
 	tsBuf.WriteTo(buf)
 
@@ -586,7 +588,7 @@ func generateFromPrecompiledTemplates(
 		bigB[0] = 0xa
 
 		template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), seriesID, timestamp)
-		bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len()))
+		bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len())) // #nosec G115 -- buffer Len() is always non-negative
 		buf.Write(bigB)
 		tsBuf.WriteTo(buf)
 	}
