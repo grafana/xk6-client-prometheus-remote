@@ -645,6 +645,6 @@ func generateFromPrecompiledTemplates(
 	return buf, nil
 }
 
-func valueBetween(r *rand.Rand, min, max int) float64 {
-	return (r.Float64() * float64(max-min)) + float64(min)
+func valueBetween(r *rand.Rand, minVal, maxVal int) float64 {
+	return (r.Float64() * float64(maxVal-minVal)) + float64(minVal)
 }
