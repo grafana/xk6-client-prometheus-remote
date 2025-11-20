@@ -78,10 +78,10 @@ type Client struct {
 
 // Config holds the configuration for the Prometheus Remote Write client.
 type Config struct {
-	Url        string            `json:"url"` //nolint:revive // sobek exports value here
-	UserAgent  string            `json:"user_agent"`
+	Url        string            `json:"url"`        //nolint:revive // sobek exports value here
+	UserAgent  string            `json:"user_agent"` //nolint:tagliatelle // sobek use snake case for JSON keys
 	Timeout    string            `json:"timeout"`
-	TenantName string            `json:"tenant_name"`
+	TenantName string            `json:"tenant_name"` //nolint:tagliatelle // sobek use snake case for JSON keys
 	Headers    map[string]string `json:"headers"`
 }
 
