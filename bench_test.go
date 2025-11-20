@@ -132,7 +132,7 @@ func BenchmarkStoreFromPrecompiledTemplates(b *testing.B) {
 		require.NoError(b, err)
 	}
 
-	require.True(b, 1 <= *s.count) // this might need an atomic
+	require.LessOrEqual(b, int64(1), *s.count) // this might need an atomic
 }
 
 func BenchmarkStoreFromTemplates(b *testing.B) {
@@ -153,7 +153,7 @@ func BenchmarkStoreFromTemplates(b *testing.B) {
 		require.NoError(b, err)
 	}
 
-	require.True(b, 1 <= *s.count) // this might need an atomic
+	require.LessOrEqual(b, int64(1), *s.count) // this might need an atomic
 }
 
 func BenchmarkGenerateFromPrecompiledTemplates(b *testing.B) {
