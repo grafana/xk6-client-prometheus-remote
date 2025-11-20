@@ -54,7 +54,7 @@ func BenchmarkEvaluateTemplatesComplex(b *testing.B) {
 	}
 }
 
-//nolint:gchecknoglobals // benchmark test constants
+//nolint:gochecknoglobals // benchmark test constants
 var benchmarkLabels = map[string]string{
 	"__name__":        "k6_generated_metric_${series_id/1000}",
 	"series_id":       "${series_id}",
