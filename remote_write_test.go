@@ -14,6 +14,8 @@ import (
 )
 
 func TestEvaluateTemplate(t *testing.T) {
+	t.Parallel()
+
 	testcases := []struct {
 		template      string
 		value         int
@@ -32,6 +34,8 @@ func TestEvaluateTemplate(t *testing.T) {
 	for _, testcase := range testcases {
 		testcase := testcase
 		t.Run(fmt.Sprintf("template=%q,value=%d", testcase.template, testcase.value), func(t *testing.T) {
+			t.Parallel()
+
 			compiled, err := compileTemplate(testcase.template)
 			if testcase.expectedError != "" {
 				require.Error(t, err)
@@ -49,6 +53,8 @@ func TestEvaluateTemplate(t *testing.T) {
 }
 
 func TestGenerateFromTemplates(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		minValue       int
 		maxValue       int
@@ -146,7 +152,10 @@ func TestGenerateFromTemplates(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			// #nosec G404 -- Using math/rand in test code, cryptographic randomness not required
 			r := rand.New(rand.NewSource(time.Now().Unix()))
 			compiled, err := compileLabelTemplates(tt.args.labelsTemplate)
@@ -199,6 +208,8 @@ func TestGenerateFromTemplates(t *testing.T) {
 
 // this test that the prompb stream marshalling implementation produces the same result as the upstream one.
 func TestStreamEncoding(t *testing.T) {
+	t.Parallel()
+
 	seed := time.Now().Unix()
 	t.Logf("seed=%d", seed)
 	// #nosec G404 -- Using math/rand in test code with deterministic seed for reproducible tests
