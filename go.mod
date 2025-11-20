@@ -1,6 +1,6 @@
 module github.com/grafana/xk6-client-prometheus-remote
 
-go 1.20
+go 1.24
 
 require (
 	github.com/golang/protobuf v1.5.4
