@@ -169,27 +169,27 @@ func TestGenerateFromTemplates(t *testing.T) {
 				t.Errorf("Differing length, want: %d, got: %d", len(tt.want.series), len(got))
 			}
 
-			for seriesId := range got {
-				if !reflect.DeepEqual(got[seriesId].Labels, tt.want.series[seriesId].Labels) {
+			for seriesID := range got {
+				if !reflect.DeepEqual(got[seriesID].Labels, tt.want.series[seriesID].Labels) {
 					t.Errorf(
 						"Unexpected labels in series %d, want: %v, got: %v",
-						seriesId, tt.want.series[seriesId].Labels, got[seriesId].Labels,
+						seriesID, tt.want.series[seriesID].Labels, got[seriesID].Labels,
 					)
 				}
 
-				if got[seriesId].Samples[0].Timestamp != tt.want.series[seriesId].Samples[0].Timestamp {
+				if got[seriesID].Samples[0].Timestamp != tt.want.series[seriesID].Samples[0].Timestamp {
 					t.Errorf(
 						"Unexpected timestamp in series %d, want: %d, got: %d",
-						seriesId,
-						tt.want.series[seriesId].Samples[0].Timestamp,
-						got[seriesId].Samples[0].Timestamp,
+						seriesID,
+						tt.want.series[seriesID].Samples[0].Timestamp,
+						got[seriesID].Samples[0].Timestamp,
 					)
 				}
 
-				if got[seriesId].Samples[0].Value < tt.want.valueMin || got[seriesId].Samples[0].Value > tt.want.valueMax {
+				if got[seriesID].Samples[0].Value < tt.want.valueMin || got[seriesID].Samples[0].Value > tt.want.valueMax {
 					t.Errorf(
 						"Unexpected value in series %d, want: %f-%f, got: %f",
-						seriesId, tt.want.valueMin, tt.want.valueMax, got[seriesId].Samples[0].Value,
+						seriesID, tt.want.valueMin, tt.want.valueMax, got[seriesID].Samples[0].Value,
 					)
 				}
 			}

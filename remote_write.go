@@ -1,3 +1,6 @@
+// Package remotewrite provides a k6 extension for sending metrics to Prometheus Remote Write endpoints.
+// This extension allows k6 load tests to generate and send time series data to any Prometheus-compatible
+// remote write endpoint, enabling performance testing of metric ingestion pipelines.
 package remotewrite
 
 import (
@@ -48,6 +51,7 @@ func (r *remoteWriteModule) NewModuleInstance(vu modules.VU) modules.Instance {
 	}
 }
 
+// Exports returns the exports of the module for k6.
 func (r *RemoteWrite) Exports() modules.Exports {
 	return modules.Exports{
 		Named: map[string]interface{}{
@@ -65,8 +69,9 @@ type Client struct {
 	vu  modules.VU
 }
 
+// Config holds the configuration for the Prometheus Remote Write client.
 type Config struct {
-	Url        string            `json:"url"`
+	Url        string            `json:"url"` //nolint:revive // sobek exports value here
 	UserAgent  string            `json:"user_agent"`
 	Timeout    string            `json:"timeout"`
 	TenantName string            `json:"tenant_name"`
@@ -102,15 +107,18 @@ func (r *RemoteWrite) xclient(c sobek.ConstructorCall) *sobek.Object {
 	}).ToObject(rt)
 }
 
+// Timeseries represents a Prometheus time series with labels and samples.
 type Timeseries struct {
 	Labels  []Label
 	Samples []Sample
 }
 
+// Label represents a Prometheus label name-value pair.
 type Label struct {
 	Name, Value string
 }
 
+// Sample represents a single Prometheus sample with value and timestamp.
 type Sample struct {
 	Value     float64
 	Timestamp int64
@@ -160,8 +168,9 @@ func xtimeseries(labels map[string]string, samples []Sample) *Timeseries {
 	return t
 }
 
-func (c *Client) StoreGenerated(total_series, batches, batch_size, batch int64) (httpext.Response, error) {
-	ts, err := generate_series(total_series, batches, batch_size, batch)
+// StoreGenerated generates and stores synthetic time series data for load testing.
+func (c *Client) StoreGenerated(totalSeries, batches, batchSize, batch int64) (httpext.Response, error) {
+	ts, err := generateSeries(totalSeries, batches, batchSize, batch)
 	if err != nil {
 		return *httpext.NewResponse(), err
 	}
@@ -169,8 +178,8 @@ func (c *Client) StoreGenerated(total_series, batches, batch_size, batch int64) 
 	return c.Store(ts)
 }
 
-func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseries, error) {
-	if total_series == 0 {
+func generateSeries(totalSeries, batches, batchSize, batch int64) ([]Timeseries, error) {
+	if totalSeries == 0 {
 		return nil, nil
 	}
 
@@ -178,27 +187,27 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 		return nil, errors.New("batch must be in the range of batches")
 	}
 
-	if total_series/batches != batch_size {
+	if totalSeries/batches != batchSize {
 		return nil, errors.New("total_series must divide evenly into batches of size batch_size")
 	}
 
 	// #nosec G404 -- This is test data generation for load testing, not cryptographic use
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	series := make([]Timeseries, batch_size)
+	series := make([]Timeseries, batchSize)
 	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
 
-	for i := int64(0); i < batch_size; i++ {
-		series_id := batch_size*(batch-1) + i
-		labels := generate_cardinality_labels(total_series, series_id)
+	for i := int64(0); i < batchSize; i++ {
+		seriesID := batchSize*(batch-1) + i
+		labels := generateCardinalityLabels(totalSeries, seriesID)
 		labels = append(labels, Label{
 			Name:  "__name__",
-			Value: "k6_generated_metric_" + strconv.Itoa(int(series_id)),
+			Value: "k6_generated_metric_" + strconv.Itoa(int(seriesID)),
 		})
 
 		// Required for querying in order to have unique series excluding the metric name.
 		labels = append(labels, Label{
 			Name:  "series_id",
-			Value: strconv.Itoa(int(series_id)),
+			Value: strconv.Itoa(int(seriesID)),
 		})
 
 		series[i] = Timeseries{
@@ -210,21 +219,22 @@ func generate_series(total_series, batches, batch_size, batch int64) ([]Timeseri
 	return series, nil
 }
 
-func generate_cardinality_labels(total_series, series_id int64) []Label {
+func generateCardinalityLabels(totalSeries, seriesID int64) []Label {
 	// exp is the greatest exponent of 10 that is less than total series.
-	exp := int64(math.Log10(float64(total_series)))
+	exp := int64(math.Log10(float64(totalSeries)))
 	labels := make([]Label, 0, exp)
 
 	for x := 1; int64(x) <= exp; x++ {
 		labels = append(labels, Label{
 			Name:  "cardinality_1e" + strconv.Itoa(x),
-			Value: strconv.Itoa(int(series_id / int64(math.Pow(10, float64(x))))),
+			Value: strconv.Itoa(int(seriesID / int64(math.Pow(10, float64(x))))),
 		})
 	}
 
 	return labels
 }
 
+// Store sends the provided time series to the Prometheus Remote Write endpoint.
 func (c *Client) Store(ts []Timeseries) (httpext.Response, error) {
 	var batch []prompb.TimeSeries
 	for _, t := range ts {
@@ -319,10 +329,12 @@ func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 	return *response, err
 }
 
+// ResponseCallback checks if the HTTP status code indicates success (2xx).
 func ResponseCallback(n int) bool {
 	return n/100 == 2
 }
 
+// FromTimeseriesToPrometheusTimeseries converts a Timeseries to a Prometheus TimeSeries.
 func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 	var labels []prompb.Label
 
@@ -481,6 +493,7 @@ func compileLabelTemplates(labelsTemplate map[string]string) (*labelTemplates, e
 	}, nil
 }
 
+// StoreFromTemplates generates and stores time series data using label templates.
 func (c *Client) StoreFromTemplates(
 	minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
@@ -537,6 +550,7 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 	return nil // TODO fix
 }
 
+// StoreFromPrecompiledTemplates generates and stores time series data using precompiled label templates.
 func (c *Client) StoreFromPrecompiledTemplates(
 	minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
