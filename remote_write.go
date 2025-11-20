@@ -428,7 +428,7 @@ func (c *Client) StoreFromTemplates(
 	return c.StoreFromPrecompiledTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, template)
 }
 
-func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesID int, timestamp int64) (err error) {
+func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesID int, timestamp int64) error {
 	labelValue := template.labelValue[:]
 	for _, template := range template.compiledTemplates {
 		labelValue = labelValue[:0]
