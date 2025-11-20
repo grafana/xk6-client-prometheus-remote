@@ -157,7 +157,8 @@ func BenchmarkStoreFromTemplates(b *testing.B) {
 func BenchmarkGenerateFromPrecompiledTemplates(b *testing.B) {
 	b.ReportAllocs()
 	b.RunParallel(func(pb *testing.PB) {
-		r := rand.New(rand.NewSource(time.Now().Unix())) // #nosec G404 -- This is test data generation for load testing, not cryptographic use
+		// #nosec G404 -- This is test data generation for load testing, not cryptographic use
+		r := rand.New(rand.NewSource(time.Now().Unix()))
 		i := 0
 		template, err := compileLabelTemplates(benchmarkLabels)
 		require.NoError(b, err)

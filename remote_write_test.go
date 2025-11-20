@@ -152,7 +152,10 @@ func TestGenerateFromTemplates(t *testing.T) {
 			compiled, err := compileLabelTemplates(tt.args.labelsTemplate)
 			require.NoError(t, err)
 
-			buf, err := generateFromPrecompiledTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, compiled)
+			buf, err := generateFromPrecompiledTemplates(
+				r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp,
+				tt.args.minSeriesID, tt.args.maxSeriesID, compiled,
+			)
 			require.NoError(t, err)
 
 			req := new(prompb.WriteRequest)
@@ -168,15 +171,26 @@ func TestGenerateFromTemplates(t *testing.T) {
 
 			for seriesId := range got {
 				if !reflect.DeepEqual(got[seriesId].Labels, tt.want.series[seriesId].Labels) {
-					t.Errorf("Unexpected labels in series %d, want: %v, got: %v", seriesId, tt.want.series[seriesId].Labels, got[seriesId].Labels)
+					t.Errorf(
+						"Unexpected labels in series %d, want: %v, got: %v",
+						seriesId, tt.want.series[seriesId].Labels, got[seriesId].Labels,
+					)
 				}
 
 				if got[seriesId].Samples[0].Timestamp != tt.want.series[seriesId].Samples[0].Timestamp {
-					t.Errorf("Unexpected timestamp in series %d, want: %d, got: %d", seriesId, tt.want.series[seriesId].Samples[0].Timestamp, got[seriesId].Samples[0].Timestamp)
+					t.Errorf(
+						"Unexpected timestamp in series %d, want: %d, got: %d",
+						seriesId,
+						tt.want.series[seriesId].Samples[0].Timestamp,
+						got[seriesId].Samples[0].Timestamp,
+					)
 				}
 
 				if got[seriesId].Samples[0].Value < tt.want.valueMin || got[seriesId].Samples[0].Value > tt.want.valueMax {
-					t.Errorf("Unexpected value in series %d, want: %f-%f, got: %f", seriesId, tt.want.valueMin, tt.want.valueMax, got[seriesId].Samples[0].Value)
+					t.Errorf(
+						"Unexpected value in series %d, want: %f-%f, got: %f",
+						seriesId, tt.want.valueMin, tt.want.valueMax, got[seriesId].Samples[0].Value,
+					)
 				}
 			}
 		})

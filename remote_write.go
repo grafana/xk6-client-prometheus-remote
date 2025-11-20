@@ -508,7 +508,8 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 		labelValue = protowire.AppendVarint(labelValue, uint64(n2-n1)) // #nosec G115 -- len() result is always non-negative
 		n3 := len(labelValue)
 
-		labelValue = protowire.AppendVarint(labelValue, uint64(n3+1+1+len(template.name))) // #nosec G115 -- len() result is always non-negative
+		// #nosec G115 -- len() result is always non-negative
+		labelValue = protowire.AppendVarint(labelValue, uint64(n3+1+1+len(template.name)))
 		w.Write(labelValue[n3:])
 		w.WriteByte(0xa)
 		w.Write(labelValue[:n1])
@@ -522,7 +523,8 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 	labelValue[0] = 0x9
 	binary.LittleEndian.PutUint64(labelValue[1:9], uint64(math.Float64bits(value)))
 	labelValue[9] = 0x10
-	labelValue = protowire.AppendVarint(labelValue, uint64(timestamp)) // #nosec G115 -- timestamp is always positive milliseconds since Unix epoch
+	// #nosec G115 -- timestamp is always positive milliseconds since Unix epoch
+	labelValue = protowire.AppendVarint(labelValue, uint64(timestamp))
 
 	n := len(labelValue)
 	labelValue = labelValue[:n+1]
