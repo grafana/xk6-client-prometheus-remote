@@ -81,7 +81,7 @@ func newTestServer(tb testing.TB) *testServer {
 
 	ts.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		io.Copy(io.Discard, r.Body)
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		atomic.AddInt64(ts.count, 1)
 	}))
 	registry := metrics.NewRegistry()
