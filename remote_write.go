@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck // Required for compatibility with prometheus prompb package
 	"github.com/golang/snappy"
 	"github.com/grafana/sobek"
 	"github.com/pkg/errors"

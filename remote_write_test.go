@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck // Required for compatibility with prometheus prompb package
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/require"
 )
