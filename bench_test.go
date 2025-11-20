@@ -75,6 +75,8 @@ type testServer struct {
 }
 
 func newTestServer(tb testing.TB) *testServer {
+	tb.Helper()
+
 	ts := &testServer{
 		count: new(int64),
 	}
