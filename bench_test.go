@@ -17,14 +17,14 @@ import (
 )
 
 func BenchmarkCompileTemplatesSimple(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := compileTemplate("something ${series_id} else")
 		require.NoError(b, err)
 	}
 }
 
 func BenchmarkCompileTemplatesComplex(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := compileTemplate("something ${series_id/1000} else")
 		require.NoError(b, err)
 	}
@@ -34,8 +34,10 @@ func BenchmarkEvaluateTemplatesSimple(b *testing.B) {
 	t, err := compileTemplate("something ${series_id} else")
 	require.NoError(b, err)
 	b.ResetTimer()
+
 	var buf []byte
-	for i := 0; i < b.N; i++ {
+
+	for i := range b.N {
 		buf = t.AppendByte(buf[:0], i)
 	}
 }
@@ -44,12 +46,15 @@ func BenchmarkEvaluateTemplatesComplex(b *testing.B) {
 	t, err := compileTemplate("something ${series_id/1000} else")
 	require.NoError(b, err)
 	b.ResetTimer()
+
 	var buf []byte
-	for i := 0; i < b.N; i++ {
+
+	for i := range b.N {
 		buf = t.AppendByte(buf[:0], i)
 	}
 }
 
+//nolint:gochecknoglobals // benchmark test constants
 var benchmarkLabels = map[string]string{
 	"__name__":        "k6_generated_metric_${series_id/1000}",
 	"series_id":       "${series_id}",
@@ -71,21 +76,26 @@ type testServer struct {
 }
 
 func newTestServer(tb testing.TB) *testServer {
+	tb.Helper()
+
 	ts := &testServer{
 		count: new(int64),
 	}
 
 	ts.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.Copy(io.Discard, r.Body)
-		w.WriteHeader(200)
+		_, _ = io.Copy(io.Discard, r.Body)
+
+		w.WriteHeader(http.StatusOK)
 		atomic.AddInt64(ts.count, 1)
 	}))
 	registry := metrics.NewRegistry()
 	ch := make(chan metrics.SampleContainer)
+
 	tb.Cleanup(func() {
 		ts.server.Close()
 		close(ch) // this might need to be elsewhere
 	})
+
 	ts.vu = new(modulestest.VU)
 	ts.vu.CtxField = context.Background()
 
@@ -97,9 +107,10 @@ func newTestServer(tb testing.TB) *testServer {
 	ts.vu.StateField.Tags = lib.NewVUStateTags(registry.RootTagSet())
 
 	go func() {
-		for range ch {
+		for range ch { //nolint:revive // we just need to drain the channel
 		}
 	}()
+
 	return ts
 }
 
@@ -117,11 +128,13 @@ func BenchmarkStoreFromPrecompiledTemplates(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for i := range b.N {
 		_, err := c.StoreFromPrecompiledTemplates(i, i+10, int64(i), 0, 100000, template)
 		require.NoError(b, err)
 	}
-	require.True(b, 1 <= *s.count) // this might need an atomic
+
+	require.LessOrEqual(b, int64(1), *s.count) // this might need an atomic
 }
 
 func BenchmarkStoreFromTemplates(b *testing.B) {
@@ -136,23 +149,27 @@ func BenchmarkStoreFromTemplates(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for i := range b.N {
 		_, err := c.StoreFromTemplates(i, i+10, int64(i), 0, 100000, benchmarkLabels)
 		require.NoError(b, err)
 	}
-	require.True(b, 1 <= *s.count) // this might need an atomic
+
+	require.LessOrEqual(b, int64(1), *s.count) // this might need an atomic
 }
 
 func BenchmarkGenerateFromPrecompiledTemplates(b *testing.B) {
 	b.ReportAllocs()
 	b.RunParallel(func(pb *testing.PB) {
+		// #nosec G404 -- This is test data generation for load testing, not cryptographic use
 		r := rand.New(rand.NewSource(time.Now().Unix()))
 		i := 0
 		template, err := compileLabelTemplates(benchmarkLabels)
 		require.NoError(b, err)
+
 		for pb.Next() {
 			i++
-			_ = generateFromPrecompiledTemplates(r, i, i+10, int64(i), 0, 100000, template)
+			_, _ = generateFromPrecompiledTemplates(r, i, i+10, int64(i), 0, 100000, template)
 		}
 	})
 }

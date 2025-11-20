@@ -8,12 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck // Required for compatibility with prometheus prompb package
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEvaluateTemplate(t *testing.T) {
+	t.Parallel()
+
 	testcases := []struct {
 		template      string
 		value         int
@@ -30,22 +32,28 @@ func TestEvaluateTemplate(t *testing.T) {
 		{template: "something else", result: "something else"},
 	}
 	for _, testcase := range testcases {
-		testcase := testcase
 		t.Run(fmt.Sprintf("template=%q,value=%d", testcase.template, testcase.value), func(t *testing.T) {
+			t.Parallel()
+
 			compiled, err := compileTemplate(testcase.template)
 			if testcase.expectedError != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), testcase.expectedError)
+
 				return
 			}
+
 			require.NoError(t, err)
+
 			result := string(compiled.AppendByte(nil, testcase.value))
 			require.Equal(t, testcase.result, result)
 		})
 	}
 }
 
-func TestGenerateFromTemplates(t *testing.T) {
+func TestGenerateFromTemplates(t *testing.T) { //nolint:funlen // long test function
+	t.Parallel()
+
 	type args struct {
 		minValue       int
 		maxValue       int
@@ -54,11 +62,13 @@ func TestGenerateFromTemplates(t *testing.T) {
 		maxSeriesID    int
 		labelsTemplate map[string]string
 	}
+
 	type want struct {
 		valueMin float64
 		valueMax float64
 		series   []prompb.TimeSeries
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -142,42 +152,69 @@ func TestGenerateFromTemplates(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// #nosec G404 -- Using math/rand in test code, cryptographic randomness not required
 			r := rand.New(rand.NewSource(time.Now().Unix()))
 			compiled, err := compileLabelTemplates(tt.args.labelsTemplate)
 			require.NoError(t, err)
-			buf := generateFromPrecompiledTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, compiled)
+
+			buf, err := generateFromPrecompiledTemplates(
+				r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp,
+				tt.args.minSeriesID, tt.args.maxSeriesID, compiled,
+			)
+			require.NoError(t, err)
+
 			req := new(prompb.WriteRequest)
+
 			require.NoError(t, proto.Unmarshal(buf.Bytes(), req))
 			got := req.Timeseries
+
 			require.NoError(t, err)
+
 			if len(got) != len(tt.want.series) {
 				t.Errorf("Differing length, want: %d, got: %d", len(tt.want.series), len(got))
 			}
 
-			for seriesId := range got {
-				if !reflect.DeepEqual(got[seriesId].Labels, tt.want.series[seriesId].Labels) {
-					t.Errorf("Unexpected labels in series %d, want: %v, got: %v", seriesId, tt.want.series[seriesId].Labels, got[seriesId].Labels)
+			for seriesID := range got {
+				if !reflect.DeepEqual(got[seriesID].Labels, tt.want.series[seriesID].Labels) {
+					t.Errorf(
+						"Unexpected labels in series %d, want: %v, got: %v",
+						seriesID, tt.want.series[seriesID].Labels, got[seriesID].Labels,
+					)
 				}
 
-				if got[seriesId].Samples[0].Timestamp != tt.want.series[seriesId].Samples[0].Timestamp {
-					t.Errorf("Unexpected timestamp in series %d, want: %d, got: %d", seriesId, tt.want.series[seriesId].Samples[0].Timestamp, got[seriesId].Samples[0].Timestamp)
+				if got[seriesID].Samples[0].Timestamp != tt.want.series[seriesID].Samples[0].Timestamp {
+					t.Errorf(
+						"Unexpected timestamp in series %d, want: %d, got: %d",
+						seriesID,
+						tt.want.series[seriesID].Samples[0].Timestamp,
+						got[seriesID].Samples[0].Timestamp,
+					)
 				}
 
-				if got[seriesId].Samples[0].Value < tt.want.valueMin || got[seriesId].Samples[0].Value > tt.want.valueMax {
-					t.Errorf("Unexpected value in series %d, want: %f-%f, got: %f", seriesId, tt.want.valueMin, tt.want.valueMax, got[seriesId].Samples[0].Value)
+				if got[seriesID].Samples[0].Value < tt.want.valueMin || got[seriesID].Samples[0].Value > tt.want.valueMax {
+					t.Errorf(
+						"Unexpected value in series %d, want: %f-%f, got: %f",
+						seriesID, tt.want.valueMin, tt.want.valueMax, got[seriesID].Samples[0].Value,
+					)
 				}
 			}
 		})
 	}
 }
 
-// this test that the prompb stream marshalling implementation produces the same result as the upstream one
-func TestStreamEncoding(t *testing.T) {
+// this test that the prompb stream marshalling implementation produces the same result as the upstream one.
+func TestStreamEncoding(t *testing.T) { //nolint:funlen // long test function
+	t.Parallel()
+
 	seed := time.Now().Unix()
 	t.Logf("seed=%d", seed)
+	// #nosec G404 -- Using math/rand in test code with deterministic seed for reproducible tests
 	r := rand.New(rand.NewSource(seed))
 	timestamp := int64(valueBetween(r, 10, 100)) // timestamp
-	r = rand.New(rand.NewSource(seed))           // reset
+	// #nosec G404 -- Using math/rand in test code with deterministic seed for reproducible tests
+	r = rand.New(rand.NewSource(seed)) // reset
 	minValue := 10
 	maxValue := 100000
 	// this is the upstream encoding. It is purposefully this "handwritten"
@@ -284,6 +321,7 @@ func TestStreamEncoding(t *testing.T) {
 		},
 	})
 
+	// #nosec G404 -- Using math/rand in test code with deterministic seed for reproducible tests
 	r = rand.New(rand.NewSource(seed)) // reset
 	template, err := compileLabelTemplates(map[string]string{
 		"here":  "else",
@@ -295,7 +333,9 @@ func TestStreamEncoding(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	buf := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 22, template)
+	buf, err := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 22, template)
+	require.NoError(t, err)
+
 	b := buf.Bytes()
 	require.Equal(t, d, b)
 }
@@ -319,7 +359,8 @@ func BenchmarkWriteFor(b *testing.B) {
 	template.writeFor(tsBuf, 15, 15, 234)
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for i := range b.N {
 		template.writeFor(tsBuf, 15, i, 234)
 	}
 }
