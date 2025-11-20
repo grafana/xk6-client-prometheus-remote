@@ -543,7 +543,7 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 
 	labelValue = labelValue[:10]
 	labelValue[0] = 0x9
-	binary.LittleEndian.PutUint64(labelValue[1:9], uint64(math.Float64bits(value)))
+	binary.LittleEndian.PutUint64(labelValue[1:9], math.Float64bits(value))
 	labelValue[9] = 0x10
 	// #nosec G115 -- timestamp is always positive milliseconds since Unix epoch
 	labelValue = protowire.AppendVarint(labelValue, uint64(timestamp))
