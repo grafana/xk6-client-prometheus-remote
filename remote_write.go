@@ -237,7 +237,8 @@ func generateCardinalityLabels(totalSeries, seriesID int64) []Label {
 
 // Store sends the provided time series to the Prometheus Remote Write endpoint.
 func (c *Client) Store(ts []Timeseries) (httpext.Response, error) {
-	var batch []prompb.TimeSeries
+	batch := make([]prompb.TimeSeries, 0, len(ts))
+
 	for _, t := range ts {
 		batch = append(batch, FromTimeseriesToPrometheusTimeseries(t))
 	}
@@ -338,9 +339,8 @@ func ResponseCallback(n int) bool {
 
 // FromTimeseriesToPrometheusTimeseries converts a Timeseries to a Prometheus TimeSeries.
 func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
-	var labels []prompb.Label
-
-	var samples []prompb.Sample
+	labels := make([]prompb.Label, 0, len(ts.Labels))
+	samples := make([]prompb.Sample, 0, len(ts.Samples))
 
 	for _, label := range ts.Labels {
 		labels = append(labels, prompb.Label{
