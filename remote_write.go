@@ -292,7 +292,7 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 // 1. replacing ${series_id} with the series_id provided.
 // 2. replacing ${series_id/<integer>} with the evaluation of that.
 // 3. if error in parsing return error.
-func compileTemplate(template string) (*labelGenerator, error) {
+func compileTemplate(template string) (*labelGenerator, error) { //nolint:cyclop
 	i := strings.Index(template, "${series_id")
 	if i == -1 {
 		return newIdentityLabelGenerator(template), nil
