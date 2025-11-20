@@ -203,7 +203,7 @@ func generateSeries(totalSeries, batches, batchSize, batch int64) ([]Timeseries,
 	series := make([]Timeseries, batchSize)
 	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
 
-	for i := int64(0); i < batchSize; i++ {
+	for i := range batchSize {
 		seriesID := batchSize*(batch-1) + i
 		labels := generateCardinalityLabels(totalSeries, seriesID)
 		labels = append(labels, Label{
@@ -322,7 +322,7 @@ func compileTemplate(template string) (*labelGenerator, error) { //nolint:cyclop
 
 		possibleValues := make([][]byte, d)
 		// REVIEW TODO have an upper limit
-		for j := 0; j < d; j++ {
+		for j := range d {
 			var b []byte
 
 			b = append(b, template[:i]...)

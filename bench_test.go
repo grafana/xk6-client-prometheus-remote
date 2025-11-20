@@ -17,14 +17,14 @@ import (
 )
 
 func BenchmarkCompileTemplatesSimple(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := compileTemplate("something ${series_id} else")
 		require.NoError(b, err)
 	}
 }
 
 func BenchmarkCompileTemplatesComplex(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := compileTemplate("something ${series_id/1000} else")
 		require.NoError(b, err)
 	}
@@ -37,7 +37,7 @@ func BenchmarkEvaluateTemplatesSimple(b *testing.B) {
 
 	var buf []byte
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		buf = t.AppendByte(buf[:0], i)
 	}
 }
@@ -49,7 +49,7 @@ func BenchmarkEvaluateTemplatesComplex(b *testing.B) {
 
 	var buf []byte
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		buf = t.AppendByte(buf[:0], i)
 	}
 }
@@ -129,7 +129,7 @@ func BenchmarkStoreFromPrecompiledTemplates(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		_, err := c.StoreFromPrecompiledTemplates(i, i+10, int64(i), 0, 100000, template)
 		require.NoError(b, err)
 	}
@@ -150,7 +150,7 @@ func BenchmarkStoreFromTemplates(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		_, err := c.StoreFromTemplates(i, i+10, int64(i), 0, 100000, benchmarkLabels)
 		require.NoError(b, err)
 	}

@@ -360,7 +360,7 @@ func BenchmarkWriteFor(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		template.writeFor(tsBuf, 15, i, 234)
 	}
 }
