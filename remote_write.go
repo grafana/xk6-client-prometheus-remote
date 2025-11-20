@@ -428,7 +428,7 @@ func (c *Client) StoreFromTemplates(
 	return c.StoreFromPrecompiledTemplates(minValue, maxValue, timestamp, minSeriesID, maxSeriesID, template)
 }
 
-func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesID int, timestamp int64) error {
+func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesID int, timestamp int64) {
 	labelValue := template.labelValue[:]
 	for _, template := range template.compiledTemplates {
 		labelValue = labelValue[:0]
@@ -471,7 +471,7 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 	w.Write(labelValue[:n])
 	template.labelValue = labelValue
 
-	return nil // REVIEW TODO fix
+	// REVIEW TODO add error handling?
 }
 
 // StoreFromPrecompiledTemplates generates and stores time series data using precompiled label templates.
@@ -607,15 +607,12 @@ func generateFromPrecompiledTemplates(
 	tsBuf := new(bytes.Buffer)
 	bigB[0] = 0xa
 
-	err := template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), minSeriesID, timestamp)
-	if err != nil {
-		return nil, err
-	}
+	template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), minSeriesID, timestamp)
 
 	bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len())) // #nosec G115 -- buffer Len() is always non-negative
 	buf.Write(bigB)
 
-	_, err = tsBuf.WriteTo(buf)
+	_, err := tsBuf.WriteTo(buf)
 	if err != nil {
 		return nil, err
 	}
@@ -628,10 +625,7 @@ func generateFromPrecompiledTemplates(
 
 		bigB[0] = 0xa
 
-		err := template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), seriesID, timestamp)
-		if err != nil {
-			return nil, err
-		}
+		template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), seriesID, timestamp)
 
 		bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len())) // #nosec G115 -- buffer Len() is always non-negative
 		buf.Write(bigB)
