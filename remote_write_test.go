@@ -197,7 +197,7 @@ func TestGenerateFromTemplates(t *testing.T) {
 	}
 }
 
-// this test that the prompb stream marshalling implementation produces the same result as the upstream one
+// this test that the prompb stream marshalling implementation produces the same result as the upstream one.
 func TestStreamEncoding(t *testing.T) {
 	seed := time.Now().Unix()
 	t.Logf("seed=%d", seed)

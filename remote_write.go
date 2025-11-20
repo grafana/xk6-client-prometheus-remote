@@ -78,7 +78,7 @@ type Config struct {
 	Headers    map[string]string `json:"headers"`
 }
 
-// xclient represents
+// xclient constructs a new Remote Write Client instance.
 func (r *RemoteWrite) xclient(c sobek.ConstructorCall) *sobek.Object {
 	var config Config
 
@@ -275,7 +275,7 @@ func (c *Client) store(batch []prompb.TimeSeries) (httpext.Response, error) {
 }
 
 // send sends a batch of samples to the HTTP endpoint, the request is the proto marshalled
-// and encoded bytes
+// and encoded bytes.
 func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 	httpResp := httpext.NewResponse()
 
@@ -367,9 +367,9 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 }
 
 // The only supported things are:
-// 1. replacing ${series_id} with the series_id provided
-// 2. replacing ${series_id/<integer>} with the evaluation of that
-// 3. if error in parsing return error
+// 1. replacing ${series_id} with the series_id provided.
+// 2. replacing ${series_id/<integer>} with the evaluation of that.
+// 3. if error in parsing return error.
 func compileTemplate(template string) (*labelGenerator, error) {
 	i := strings.Index(template, "${series_id")
 	if i == -1 {
@@ -459,7 +459,7 @@ func newIdentityLabelGenerator(t string) *labelGenerator {
 	}
 }
 
-// this is opaque on purpose so that it can't be done anything to from the js side
+// this is opaque on purpose so that it can't be done anything to from the js side.
 type labelTemplates struct {
 	compiledTemplates []compiledTemplate
 	labelValue        []byte
