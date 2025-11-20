@@ -10,7 +10,6 @@ It is implemented using the [xk6](https://k6.io/blog/extending-k6-with-xk6/) sys
 
 To start using k6 with the extension you can:
 - Download and run the [binaries](https://github.com/grafana/xk6-client-prometheus-remote/releases) that we build on each release.
-- Pull and run the [Docker images](https://github.com/grafana/xk6-client-prometheus-remote/pkgs/container/xk6-client-prometheus-remote) that we build on each release.
 - Build your own binary from the source.
 
 If you wanna go with the last option, first, ensure you have the prerequisites:
