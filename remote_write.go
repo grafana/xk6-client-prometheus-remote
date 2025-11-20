@@ -436,7 +436,7 @@ func (c *Client) StoreFromTemplates(
 }
 
 func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesID int, timestamp int64) {
-	labelValue := template.labelValue[:]
+	labelValue := template.labelValue[:] //nolint:gocritic // reuse slice to avoid allocations
 	for _, template := range template.compiledTemplates {
 		labelValue = labelValue[:0]
 
