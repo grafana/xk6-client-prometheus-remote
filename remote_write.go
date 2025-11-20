@@ -314,7 +314,7 @@ func compileTemplate(template string) (*labelGenerator, error) {
 		}
 
 		possibleValues := make([][]byte, d)
-		// TODO have an upper limit
+		// REVIEW TODO have an upper limit
 		for j := 0; j < d; j++ {
 			var b []byte
 
@@ -471,7 +471,7 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 	w.Write(labelValue[:n])
 	template.labelValue = labelValue
 
-	return nil // TODO fix
+	return nil // REVIEW TODO fix
 }
 
 // StoreFromPrecompiledTemplates generates and stores time series data using precompiled label templates.
