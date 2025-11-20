@@ -32,7 +32,6 @@ func TestEvaluateTemplate(t *testing.T) {
 		{template: "something else", result: "something else"},
 	}
 	for _, testcase := range testcases {
-		testcase := testcase
 		t.Run(fmt.Sprintf("template=%q,value=%d", testcase.template, testcase.value), func(t *testing.T) {
 			t.Parallel()
 
@@ -152,7 +151,6 @@ func TestGenerateFromTemplates(t *testing.T) { //nolint:funlen // long test func
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
