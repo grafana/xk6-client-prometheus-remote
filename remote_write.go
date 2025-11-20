@@ -226,7 +226,8 @@ func generateCardinalityLabels(totalSeries, seriesID int64) []Label {
 
 	for x := 1; int64(x) <= exp; x++ {
 		labels = append(labels, Label{
-			Name:  "cardinality_1e" + strconv.Itoa(x),
+			Name: "cardinality_1e" + strconv.Itoa(x),
+			//nolint:mnd // 10 is the base for decimal exponentiation
 			Value: strconv.Itoa(int(seriesID / int64(math.Pow(10, float64(x))))),
 		})
 	}
@@ -331,6 +332,7 @@ func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
 
 // ResponseCallback checks if the HTTP status code indicates success (2xx).
 func ResponseCallback(n int) bool {
+	//nolint:mnd // 2 represents 2xx HTTP status codes
 	return n/100 == 2
 }
 
@@ -379,6 +381,7 @@ func compileTemplate(template string) (*labelGenerator, error) {
 		return &labelGenerator{
 			AppendByte: func(b []byte, seriesID int) []byte {
 				b = append(b, template[:i]...)
+				//nolint:mnd // 10 is the base for decimal string conversion
 				b = strconv.AppendInt(b, int64(seriesID), 10)
 
 				return append(b, template[i+len("${series_id}"):]...)
@@ -401,6 +404,7 @@ func compileTemplate(template string) (*labelGenerator, error) {
 			var b []byte
 
 			b = append(b, template[:i]...)
+			//nolint:mnd // 10 is the base for decimal string conversion
 			b = strconv.AppendInt(b, int64(j), 10)
 			possibleValues[j] = append(b, template[i+end+1:]...)
 		}
@@ -432,6 +436,7 @@ func compileTemplate(template string) (*labelGenerator, error) {
 					memoizeValue = value
 					memoize = memoize[:0]
 					memoize = append(memoize, template[:i]...)
+					//nolint:mnd // 10 is the base for decimal string conversion
 					memoize = strconv.AppendInt(memoize, value, 10)
 					memoize = append(memoize, template[i+end+1:]...)
 				}
@@ -489,7 +494,8 @@ func compileLabelTemplates(labelsTemplate map[string]string) (*labelTemplates, e
 
 	return &labelTemplates{
 		compiledTemplates: compiledTemplates,
-		labelValue:        make([]byte, 128), // this is way more than necessary and it will grow if needed
+		//nolint:mnd // 128 bytes is a reasonable initial buffer size for label values
+		labelValue: make([]byte, 128), // this is way more than necessary and it will grow if needed
 	}, nil
 }
 
@@ -512,6 +518,7 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 	for _, template := range template.compiledTemplates {
 		labelValue = labelValue[:0]
 
+		//nolint:mnd // 0xa is protobuf wire format for length-delimited field
 		w.WriteByte(0xa)
 
 		labelValue = protowire.AppendVarint(labelValue, uint64(len(template.name)))
@@ -524,9 +531,11 @@ func (template *labelTemplates) writeFor(w *bytes.Buffer, value float64, seriesI
 		// #nosec G115 -- len() result is always non-negative
 		labelValue = protowire.AppendVarint(labelValue, uint64(n3+1+1+len(template.name)))
 		w.Write(labelValue[n3:])
+		//nolint:mnd // 0xa and 0x12 are protobuf wire format constants
 		w.WriteByte(0xa)
 		w.Write(labelValue[:n1])
 		w.WriteString(template.name)
+		//nolint:mnd // 0xa and 0x12 are protobuf wire format constants
 		w.WriteByte(0x12)
 		w.Write(labelValue[n2:n3])
 		w.Write(labelValue[n1:n2])
@@ -570,6 +579,7 @@ func (c *Client) StoreFromPrecompiledTemplates(
 	}
 
 	b := buf.Bytes()
+	//nolint:mnd // 9 is a heuristic compression ratio (actual ratio is between 1/9 and 1/10)
 	compressed := make([]byte, len(b)/9) // the general size is actually between 1/9 and 1/10th but this is closed enough
 	compressed = snappy.Encode(compressed, b)
 
@@ -589,6 +599,7 @@ func generateFromPrecompiledTemplates(
 	timestamp int64, minSeriesID, maxSeriesID int,
 	template *labelTemplates,
 ) (*bytes.Buffer, error) {
+	//nolint:mnd // 1024 bytes is a reasonable initial buffer size
 	bigB := make([]byte, 1024)
 	buf := new(bytes.Buffer)
 	buf.Reset()
@@ -609,6 +620,7 @@ func generateFromPrecompiledTemplates(
 		return nil, err
 	}
 
+	//nolint:mnd // 2 is a heuristic padding factor for buffer growth
 	buf.Grow((buf.Len() + 2) * (maxSeriesID - minSeriesID)) // heuristics to try to get big enough buffer in one go
 
 	for seriesID := minSeriesID + 1; seriesID < maxSeriesID; seriesID++ {
