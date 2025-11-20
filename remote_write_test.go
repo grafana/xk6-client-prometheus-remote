@@ -147,11 +147,14 @@ func TestGenerateFromTemplates(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// #nosec G404 -- Using math/rand in test code, cryptographic randomness not required
 			r := rand.New(rand.NewSource(time.Now().Unix()))
 			compiled, err := compileLabelTemplates(tt.args.labelsTemplate)
 			require.NoError(t, err)
 
-			buf := generateFromPrecompiledTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, compiled)
+			buf, err := generateFromPrecompiledTemplates(r, tt.args.minValue, tt.args.maxValue, tt.args.timestamp, tt.args.minSeriesID, tt.args.maxSeriesID, compiled)
+			require.NoError(t, err)
+
 			req := new(prompb.WriteRequest)
 
 			require.NoError(t, proto.Unmarshal(buf.Bytes(), req))
@@ -184,9 +187,11 @@ func TestGenerateFromTemplates(t *testing.T) {
 func TestStreamEncoding(t *testing.T) {
 	seed := time.Now().Unix()
 	t.Logf("seed=%d", seed)
+	// #nosec G404 -- Using math/rand in test code with deterministic seed for reproducible tests
 	r := rand.New(rand.NewSource(seed))
 	timestamp := int64(valueBetween(r, 10, 100)) // timestamp
-	r = rand.New(rand.NewSource(seed))           // reset
+	// #nosec G404 -- Using math/rand in test code with deterministic seed for reproducible tests
+	r = rand.New(rand.NewSource(seed)) // reset
 	minValue := 10
 	maxValue := 100000
 	// this is the upstream encoding. It is purposefully this "handwritten"
@@ -293,6 +298,7 @@ func TestStreamEncoding(t *testing.T) {
 		},
 	})
 
+	// #nosec G404 -- Using math/rand in test code with deterministic seed for reproducible tests
 	r = rand.New(rand.NewSource(seed)) // reset
 	template, err := compileLabelTemplates(map[string]string{
 		"here":  "else",
@@ -304,7 +310,8 @@ func TestStreamEncoding(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	buf := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 22, template)
+	buf, err := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, 15, 22, template)
+	require.NoError(t, err)
 	b := buf.Bytes()
 	require.Equal(t, d, b)
 }

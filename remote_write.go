@@ -547,7 +547,12 @@ func (c *Client) StoreFromPrecompiledTemplates(
 
 	// #nosec G404 -- This is test data generation for load testing, not cryptographic use
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	buf := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, minSeriesID, maxSeriesID, template)
+
+	buf, err := generateFromPrecompiledTemplates(r, minValue, maxValue, timestamp, minSeriesID, maxSeriesID, template)
+	if err != nil {
+		return *httpext.NewResponse(), err
+	}
+
 	b := buf.Bytes()
 	compressed := make([]byte, len(b)/9) // the general size is actually between 1/9 and 1/10th but this is closed enough
 	compressed = snappy.Encode(compressed, b)
@@ -567,7 +572,7 @@ func generateFromPrecompiledTemplates(
 	minValue, maxValue int,
 	timestamp int64, minSeriesID, maxSeriesID int,
 	template *labelTemplates,
-) *bytes.Buffer {
+) (*bytes.Buffer, error) {
 	bigB := make([]byte, 1024)
 	buf := new(bytes.Buffer)
 	buf.Reset()
@@ -575,10 +580,18 @@ func generateFromPrecompiledTemplates(
 	tsBuf := new(bytes.Buffer)
 	bigB[0] = 0xa
 
-	template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), minSeriesID, timestamp)
+	err := template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), minSeriesID, timestamp)
+	if err != nil {
+		return nil, err
+	}
+
 	bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len())) // #nosec G115 -- buffer Len() is always non-negative
 	buf.Write(bigB)
-	tsBuf.WriteTo(buf)
+
+	_, err = tsBuf.WriteTo(buf)
+	if err != nil {
+		return nil, err
+	}
 
 	buf.Grow((buf.Len() + 2) * (maxSeriesID - minSeriesID)) // heuristics to try to get big enough buffer in one go
 
@@ -587,13 +600,21 @@ func generateFromPrecompiledTemplates(
 
 		bigB[0] = 0xa
 
-		template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), seriesID, timestamp)
+		err := template.writeFor(tsBuf, valueBetween(r, minValue, maxValue), seriesID, timestamp)
+		if err != nil {
+			return nil, err
+		}
+
 		bigB = protowire.AppendVarint(bigB[:1], uint64(tsBuf.Len())) // #nosec G115 -- buffer Len() is always non-negative
 		buf.Write(bigB)
-		tsBuf.WriteTo(buf)
+
+		_, err = tsBuf.WriteTo(buf)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return buf
+	return buf, nil
 }
 
 func valueBetween(r *rand.Rand, min, max int) float64 {
