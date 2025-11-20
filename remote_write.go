@@ -246,91 +246,6 @@ func (c *Client) Store(ts []Timeseries) (httpext.Response, error) {
 	return c.store(batch)
 }
 
-func (c *Client) store(batch []prompb.TimeSeries) (httpext.Response, error) {
-	// Required for k6 metrics
-	state := c.vu.State()
-	if state == nil {
-		return *httpext.NewResponse(), errors.New("State is nil")
-	}
-
-	req := prompb.WriteRequest{
-		Timeseries: batch,
-	}
-
-	data, err := proto.Marshal(&req)
-	if err != nil {
-		return *httpext.NewResponse(), errors.Wrap(err, "failed to marshal remote-write request")
-	}
-
-	compressed := snappy.Encode(nil, data)
-
-	res, err := c.send(state, compressed)
-	if err != nil {
-		return *httpext.NewResponse(), errors.Wrap(err, "remote-write request failed")
-	}
-
-	res.Request.Body = ""
-
-	return res, nil
-}
-
-// send sends a batch of samples to the HTTP endpoint, the request is the proto marshalled
-// and encoded bytes.
-func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
-	httpResp := httpext.NewResponse()
-
-	r, err := http.NewRequest(http.MethodPost, c.cfg.Url, nil)
-	if err != nil {
-		return *httpResp, err
-	}
-
-	for k, v := range c.cfg.Headers {
-		r.Header.Set(k, v)
-
-		if k == "Host" {
-			r.Host = v
-		}
-	}
-
-	// explicit config overwrites any previously set matching headers
-	r.Header.Add("Content-Encoding", "snappy")
-	r.Header.Set("Content-Type", "application/x-protobuf")
-	r.Header.Set("User-Agent", c.cfg.UserAgent)
-	r.Header.Set("X-Prometheus-Remote-Write-Version", "0.0.2")
-
-	if c.cfg.TenantName != "" {
-		r.Header.Set("X-Scope-OrgID", c.cfg.TenantName)
-	}
-
-	duration, err := str2duration.ParseDuration(c.cfg.Timeout)
-	if err != nil {
-		return *httpResp, err
-	}
-
-	u, err := url.Parse(c.cfg.Url)
-	if err != nil {
-		return *httpResp, err
-	}
-
-	url, _ := httpext.NewURL(c.cfg.Url, u.Host+u.Path)
-
-	response, err := httpext.MakeRequest(c.vu.Context(), state, &httpext.ParsedHTTPRequest{
-		URL:              &url,
-		Req:              r,
-		Body:             bytes.NewBuffer(req),
-		Throw:            state.Options.Throw.Bool,
-		Redirects:        state.Options.MaxRedirects,
-		Timeout:          duration,
-		ResponseCallback: ResponseCallback,
-		TagsAndMeta:      state.Tags.GetCurrentValues(),
-	})
-	if err != nil {
-		return *httpResp, err
-	}
-
-	return *response, err
-}
-
 // ResponseCallback checks if the HTTP status code indicates success (2xx).
 func ResponseCallback(n int) bool {
 	//nolint:mnd // 2 represents 2xx HTTP status codes
@@ -591,6 +506,91 @@ func (c *Client) StoreFromPrecompiledTemplates(
 	res.Request.Body = ""
 
 	return res, nil
+}
+
+func (c *Client) store(batch []prompb.TimeSeries) (httpext.Response, error) {
+	// Required for k6 metrics
+	state := c.vu.State()
+	if state == nil {
+		return *httpext.NewResponse(), errors.New("State is nil")
+	}
+
+	req := prompb.WriteRequest{
+		Timeseries: batch,
+	}
+
+	data, err := proto.Marshal(&req)
+	if err != nil {
+		return *httpext.NewResponse(), errors.Wrap(err, "failed to marshal remote-write request")
+	}
+
+	compressed := snappy.Encode(nil, data)
+
+	res, err := c.send(state, compressed)
+	if err != nil {
+		return *httpext.NewResponse(), errors.Wrap(err, "remote-write request failed")
+	}
+
+	res.Request.Body = ""
+
+	return res, nil
+}
+
+// send sends a batch of samples to the HTTP endpoint, the request is the proto marshalled
+// and encoded bytes.
+func (c *Client) send(state *lib.State, req []byte) (httpext.Response, error) {
+	httpResp := httpext.NewResponse()
+
+	r, err := http.NewRequest(http.MethodPost, c.cfg.Url, nil)
+	if err != nil {
+		return *httpResp, err
+	}
+
+	for k, v := range c.cfg.Headers {
+		r.Header.Set(k, v)
+
+		if k == "Host" {
+			r.Host = v
+		}
+	}
+
+	// explicit config overwrites any previously set matching headers
+	r.Header.Add("Content-Encoding", "snappy")
+	r.Header.Set("Content-Type", "application/x-protobuf")
+	r.Header.Set("User-Agent", c.cfg.UserAgent)
+	r.Header.Set("X-Prometheus-Remote-Write-Version", "0.0.2")
+
+	if c.cfg.TenantName != "" {
+		r.Header.Set("X-Scope-OrgID", c.cfg.TenantName)
+	}
+
+	duration, err := str2duration.ParseDuration(c.cfg.Timeout)
+	if err != nil {
+		return *httpResp, err
+	}
+
+	u, err := url.Parse(c.cfg.Url)
+	if err != nil {
+		return *httpResp, err
+	}
+
+	url, _ := httpext.NewURL(c.cfg.Url, u.Host+u.Path)
+
+	response, err := httpext.MakeRequest(c.vu.Context(), state, &httpext.ParsedHTTPRequest{
+		URL:              &url,
+		Req:              r,
+		Body:             bytes.NewBuffer(req),
+		Throw:            state.Options.Throw.Bool,
+		Redirects:        state.Options.MaxRedirects,
+		Timeout:          duration,
+		ResponseCallback: ResponseCallback,
+		TagsAndMeta:      state.Tags.GetCurrentValues(),
+	})
+	if err != nil {
+		return *httpResp, err
+	}
+
+	return *response, err
 }
 
 func generateFromPrecompiledTemplates(
