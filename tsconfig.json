@@ -2,7 +2,7 @@
   "typedocOptions": {
     "entryPoints": ["./index.d.ts"],
     "out": "build/docs",
-    "name": "xk6-mqtt",
+    "name": "xk6-client-prometheus-remote",
     "readme": "none",
     "hideGenerator": true,
     "disableSources": true,
@@ -14,7 +14,7 @@
     "categorizeByGroup": false,
     "visibilityFilters": {},
     "navigationLinks": {
-      "GitHub": "https://github.com/grafana/xk6-mqtt"
+      "GitHub": "https://github.com/grafana/xk6-client-prometheus-remote"
     }
   },
   "compilerOptions": {
