@@ -6,7 +6,7 @@ import { Httpx } from 'https://jslib.k6.io/httpx/0.0.6/index.js';
 import { randomIntBetween } from "https://jslib.k6.io/k6-utils/1.1.0/index.js";
 
 const PROMETHEUS_TOKEN = __ENV.PROMETHEUS_TOKEN || fail("provide PROMETHEUS_TOKEN when strting k6");
-const PROMETHEUS_USERNAME =  __ENV.PROMETHEUS_USERNAME || fail("provide PROMETHEUS_USERNAME when strting k6");
+const PROMETHEUS_USERNAME = __ENV.PROMETHEUS_USERNAME || fail("provide PROMETHEUS_USERNAME when strting k6");
 const BASE_URL = 'prometheus-prod-10-prod-us-central-0.grafana.net';
 const RW_UNIQUE_METRICS = 50;
 const RW_SERIES_PER_METRIC = 50;
@@ -18,9 +18,9 @@ let write_client = new remote.Client({
 let query_client = new Httpx({
   baseURL: `https://${BASE_URL}/api/prom/api/v1`,
   headers: {
-      'User-Agent': 'k6-load-test',
-      "Content-Type": 'application/x-www-form-urlencoded',
-      "Authorization": `Basic ${encoding.b64encode(`${PROMETHEUS_USERNAME}:${PROMETHEUS_TOKEN}`)}`
+    'User-Agent': 'k6-load-test',
+    "Content-Type": 'application/x-www-form-urlencoded',
+    "Authorization": `Basic ${encoding.b64encode(`${PROMETHEUS_USERNAME}:${PROMETHEUS_TOKEN}`)}`
   },
   timeout: 20000 // 20s timeout.
 });
@@ -28,14 +28,14 @@ let query_client = new Httpx({
 
 export let options = {
   thresholds: {
-    'checks': [{threshold: 'rate==1', abortOnFail: true}],
-    'remote_write_req_duration': [{threshold: 'p(95) < 1000', abortOnFail: false}],
-    'http_req_failed': [{threshold: 'rate==0.00', abortOnFail: true}],
-    'http_req_duration{name:query}': [{threshold: 'p(95)<1000', abortOnFail: true}],
-    'http_req_duration{name:query_range}': [{threshold: 'p(95)<1000', abortOnFail: true}],
-    'http_req_duration{name:query_exemplars}': [{threshold: 'p(95)<1000', abortOnFail: true}],
+    'checks': [{ threshold: 'rate==1', abortOnFail: true }],
+    'remote_write_req_duration': [{ threshold: 'p(95) < 1000', abortOnFail: false }],
+    'http_req_failed': [{ threshold: 'rate==0.00', abortOnFail: true }],
+    'http_req_duration{name:query}': [{ threshold: 'p(95)<1000', abortOnFail: true }],
+    'http_req_duration{name:query_range}': [{ threshold: 'p(95)<1000', abortOnFail: true }],
+    'http_req_duration{name:query_exemplars}': [{ threshold: 'p(95)<1000', abortOnFail: true }],
   },
-  
+
   scenarios: {
     writing_metrics: {
       executor: 'constant-arrival-rate',
@@ -49,7 +49,7 @@ export let options = {
     },
     reading_metrics: {
       executor: 'constant-arrival-rate',
-      rate: RW_UNIQUE_METRICS, 
+      rate: RW_UNIQUE_METRICS,
       timeUnit: '15s',
 
       duration: '1m',
@@ -83,71 +83,71 @@ export function read_scenario() {
 
 // Helper functions below
 
-function generate_metrics(metric_name, numberOfSeries){
+function generate_metrics(metric_name, numberOfSeries) {
   let timestamp = Date.now();
-  
-//  console.log(`Writing batch of ${numberOfSeries} series. Metric name ${metric_name}`);
+
+  //  console.log(`Writing batch of ${numberOfSeries} series. Metric name ${metric_name}`);
 
   let metrics = [];
 
   for (let series_id = 0; series_id < numberOfSeries; series_id++) {
     metrics.push({
-        "labels": [
-            { "name": "__name__", "value": metric_name },
-            { "name": "series_id", "value": series_id },
-            { "name": "service", "value": "bar" },
-            { "name": "host", "value": "test-host" },
-        ],
-        "samples": [
-            {  "value": randomIntBetween(1, 100), 'timestamp': timestamp },
-        ]
+      "labels": [
+        { "name": "__name__", "value": metric_name },
+        { "name": "host", "value": "test-host" },
+        { "name": "series_id", "value": series_id.toString() },
+        { "name": "service", "value": "bar" },
+      ],
+      "samples": [
+        { "value": randomIntBetween(1, 100), 'timestamp': timestamp },
+      ]
     })
   }
   return metrics
 }
 
-function promql_query_metric(metric_name, seconds){
+function promql_query_metric(metric_name, seconds) {
   let query = `sum(${metric_name})`
 
-//  console.log(`query ${seconds}s of data for ${query}.`);
+  //  console.log(`query ${seconds}s of data for ${query}.`);
 
   let res = query_client.post('/query', {
     'query': query,
-    'time': Math.ceil(Date.now()/1000) - seconds,
-  }, {tags: {name: `query`}})
+    'time': Math.ceil(Date.now() / 1000) - seconds,
+  }, { tags: { name: `query` } })
 
   check(res, {
     'prom query worked': (r) => r.status === 200,
   }) || fail(JSON.stringify(res));
 }
 
-function promql_query_range(metric_name, seconds){
+function promql_query_range(metric_name, seconds) {
   let query = `sum(${metric_name})`
 
-//  console.log(`query_range ${seconds}s of data for ${query}.`);
+  //  console.log(`query_range ${seconds}s of data for ${query}.`);
 
   let res = query_client.post('/query_range', {
     'query': query,
-    'start': Math.ceil(Date.now()/1000) - seconds, 
-    'end': Math.ceil(Date.now()/1000),
+    'start': Math.ceil(Date.now() / 1000) - seconds,
+    'end': Math.ceil(Date.now() / 1000),
     'step': 15
-  }, {tags: {name: `query_range`}})
+  }, { tags: { name: `query_range` } })
 
   check(res, {
     'prom query_range worked': (r) => r.status === 200,
   }) || fail(JSON.stringify(res));
 }
 
-function promql_query_examplars(metric_name, seconds){
+function promql_query_examplars(metric_name, seconds) {
   let query = `sum(${metric_name})`
 
-// console.log(`query_exemplars ${seconds}s of data for ${query}.`);
+  // console.log(`query_exemplars ${seconds}s of data for ${query}.`);
 
   let res = query_client.post('/query_exemplars', {
     'query': query,
-    'start': Math.ceil(Date.now()/1000) - 300,
-    'end': Math.ceil(Date.now()/1000),
-  }, {tags: {name: `query_exemplars`}})
+    'start': Math.ceil(Date.now() / 1000) - 300,
+    'end': Math.ceil(Date.now() / 1000),
+  }, { tags: { name: `query_exemplars` } })
 
   check(res, {
     'prom query_exemplars worked': (r) => r.status === 200,
