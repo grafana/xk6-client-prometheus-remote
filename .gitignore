@@ -1,3 +1,4 @@
-.env
-k6
-vendor
+/k6
+/k6.exe
+/build
+/coverage.txt
