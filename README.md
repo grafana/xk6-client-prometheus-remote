@@ -1,4 +1,11 @@
+[![GitHub Release](https://img.shields.io/github/v/release/grafana/xk6-client-prometheus-remote)](https://github.com/grafana/xk6-client-prometheus-remote/releases/)
+[![Go Report Card](https://goreportcard.com/badge/github.com/grafana/xk6-client-prometheus-remote)](https://goreportcard.com/report/github.com/grafana/xk6-client-prometheus-remote)
+[![GitHub Actions](https://github.com/grafana/xk6-client-prometheus-remote/actions/workflows/validate.yml/badge.svg)](https://github.com/grafana/xk6-client-prometheus-remote/actions/workflows/validate.yml)
+![GitHub Downloads](https://img.shields.io/github/downloads/grafana/xk6-client-prometheus-remote/total)
+
 # xk6-client-prometheus-remote
+
+**A k6 extension for testing Prometheus Remote Write endpoints**
 
 This extension adds Prometheus Remote Write testing capabilities to [k6](https://go.k6.io/k6). You can test any service that accepts data via Prometheus remote_write API such as [Cortex](https://github.com/cortexproject/cortex), [Thanos](https://github.com/improbable-eng/thanos), [Prometheus itself](https://prometheus.io/docs/prometheus/latest/feature_flags/#remote-write-receiver) and other services [listed here](https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage).
 
@@ -6,30 +13,7 @@ It is implemented using the [xk6](https://k6.io/blog/extending-k6-with-xk6/) sys
 
 > :warning: Not to be confused with [Prometheus remote write **output** extension](https://github.com/grafana/xk6-output-prometheus-remote) which is publishing test-run metrics to Prometheus.
 
-## Getting started  
-
-To start using k6 with the extension you can:
-- Download and run the [binaries](https://github.com/grafana/xk6-client-prometheus-remote/releases) that we build on each release.
-- Build your own binary from the source.
-
-If you wanna go with the last option, first, ensure you have the prerequisites:
-
-- [Go toolchain](https://go101.org/article/go-toolchain.html)
-- Git
-
-Then:
-
-1. Install `xk6`:
-  ```shell
-  $ go install go.k6.io/xk6/cmd/xk6@latest
-  ```
-
-2. Build the binary:
-  ```shell
-  $ xk6 build --with github.com/grafana/xk6-client-prometheus-remote@latest
-  ```
-
-## Basic Example
+## Usage
 
 ```javascript
 import { check, sleep } from 'k6';
@@ -61,47 +45,7 @@ export default function () {
 }
 ```
 
-Result output:
-
-```
-$ ./k6 run examples/basic.js
-
-          /\      |‾‾| /‾‾/   /‾‾/   
-     /\  /  \     |  |/  /   /  /    
-    /  \/    \    |     (   /   ‾‾\  
-   /          \   |  |\  \ |  (‾)  | 
-  / __________ \  |__| \__\ \_____/ .io
-
-  execution: local
-     script: examples/basic.js
-     output: -
-
-  scenarios: (100.00%) 1 scenario, 10 max VUs, 40s max duration (incl. graceful stop):
-           * default: 10 looping VUs for 10s (gracefulStop: 30s)
-
-
-running (10.4s), 00/10 VUs, 90 complete and 0 interrupted iterations
-default ✓ [======================================] 10 VUs  10s
-
-     ✓ is status 200
-
-     checks.....................: 100.00% ✓ 90       ✗ 0   
-     data_received..............: 46 kB   4.4 kB/s
-     data_sent..................: 24 kB   2.3 kB/s
-     http_req_blocked...........: avg=7.52ms   min=290ns    med=380ns    max=68.08ms  p(90)=67.2ms   p(95)=67.7ms  
-     http_req_connecting........: avg=1.88ms   min=0s       med=0s       max=18.27ms  p(90)=15.25ms  p(95)=17.11ms 
-     http_req_duration..........: avg=136.88ms min=131.24ms med=135.66ms max=215.49ms p(90)=139.2ms  p(95)=140.72ms
-     http_req_receiving.........: avg=42.9µs   min=22µs     med=40.65µs  max=86.74µs  p(90)=57.7µs   p(95)=64.26µs 
-     http_req_sending...........: avg=68.74µs  min=38.42µs  med=61.17µs  max=144.06µs p(90)=102.71µs p(95)=113.75µs
-     http_req_tls_handshaking...: avg=3.8ms    min=0s       med=0s       max=35.93ms  p(90)=32.92ms  p(95)=34.2ms  
-     http_req_waiting...........: avg=136.76ms min=131.07ms med=135.56ms max=215.35ms p(90)=139.09ms p(95)=140.63ms
-     http_reqs..................: 90      8.650581/s
-     iteration_duration.........: avg=1.14s    min=1.13s    med=1.13s    max=1.28s    p(90)=1.2s     p(95)=1.2s    
-     iterations.................: 90      8.650581/s
-     vus........................: 10      min=10     max=10
-     vus_max....................: 10      min=10     max=10
-```
-Inspect examples folder for more details.
+The [examples](https://github.com/grafana/xk6-client-prometheus-remote/blob/master/examples) directory contains examples of how to use the xk6-client-prometheus-remote extension. A k6 binary containing the xk6-client-prometheus-remote extension is required to run the examples.
 
 ## More advanced use case
 
@@ -143,3 +87,27 @@ Metric:    k6_generated_metric_11{cardinality_1e1="4", cardinality_2="0", series
 Timestamp: 16432354331000
 Value:     142
 ```
+
+## Download
+
+You can download pre-built k6 binaries from the [Releases](https://github.com/grafana/xk6-client-prometheus-remote/releases/) page.
+
+**Build**
+
+The [xk6](https://github.com/grafana/xk6) build tool can be used to build a k6 that will include xk6-client-prometheus-remote extension:
+
+```bash
+$ xk6 build --with github.com/grafana/xk6-client-prometheus-remote@latest
+```
+
+For more build options and how to use xk6, check out the [xk6 documentation](https://github.com/grafana/xk6).
+
+## Contribute
+
+If you want to contribute or help with the development of **xk6-client-prometheus-remote**, start by reading [CONTRIBUTING.md](CONTRIBUTING.md). 
+
+## Feedback
+
+If you find the xk6-client-prometheus-remote extension useful, please star the repo. The number of stars will determine the time allocated for maintenance.
+
+[![Stargazers over time](https://starchart.cc/grafana/xk6-client-prometheus-remote.svg?variant=adaptive)](https://starchart.cc/grafana/xk6-client-prometheus-remote)
