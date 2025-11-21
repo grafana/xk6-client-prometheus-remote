@@ -19,15 +19,15 @@ export default function () {
             { "name": "__name__", "value": `metric_gauge_random_01` },
             { "name": "label_01", "value": `label_value_01_${randomIntBetween(1, 5)}` },
             { "name": "label_02", "value": `label_value_02_${randomIntBetween(1, 20)}` },
-            {"name": "replica", "value": __VU}
+            { "name": "replica", "value": __VU.toString() }
         ],
         "samples": generateRandomSamples(1000)
-    },{
+    }, {
         "labels": [
             { "name": "__name__", "value": `metric_gauge_zero_01` },
             { "name": "label_01", "value": `label_value_01_${randomIntBetween(1, 5)}` },
             { "name": "label_02", "value": `label_value_02_${randomIntBetween(1, 20)}` },
-            {"name": "replica", "value": __VU}
+            { "name": "replica", "value": __VU.toString() }
         ],
         "samples": generateEmptySamples(1000)
     }]);
@@ -37,7 +37,7 @@ export default function () {
     sleep(0.15);
 }
 
-function generateRandomSamples(number){
+function generateRandomSamples(number) {
     let samples = []
     for (let i = 0; i < number; i++) {
         samples.push({ "value": Math.random(), })
@@ -45,7 +45,7 @@ function generateRandomSamples(number){
     return samples
 }
 
-function generateEmptySamples(number){
+function generateEmptySamples(number) {
     let samples = []
     for (let i = 0; i < number; i++) {
         samples.push({ "value": 0, })
