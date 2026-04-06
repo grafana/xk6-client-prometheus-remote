@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.4
-	github.com/grafana/sobek v0.0.0-20251209155516-22d1085c20a8
+	github.com/grafana/sobek v0.0.0-20260406180825-6d789dcdd177
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/prometheus v1.8.2-0.20210621150501-ff58416a0b02
 	github.com/stretchr/testify v1.11.1
