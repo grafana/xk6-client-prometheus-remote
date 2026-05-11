@@ -12,15 +12,15 @@ on:
 jobs:
   validate:
     name: Validate
-    uses: grafana/xk6/.github/workflows/extension-validate.yml@85233afdbdbff43ba927d474f1404edca0efd562 # v1.2.6
+    uses: grafana/xk6/.github/workflows/extension-validate.yml@1556f094f3883e37ebff04b967fddac30681c466 # v1.4.1
     permissions:
       pages: write
       id-token: write
       contents: read
     with:
-      go-version: "1.24.x"
-      go-versions: '["1.25.x","1.24.x"]'
+      go-version: "1.25.x"
+      go-versions: '["1.25.x"]'
       golangci-lint-version: "v2.5.0"
       platforms: '["ubuntu-latest", "windows-latest", "macos-latest"]'
-      k6-versions: '["v1.4.0", "v1.0.0"]'
-      xk6-version: "1.2.6"
+      k6-versions: '["v1.7.1"]'
+      xk6-version: "1.4.1"
