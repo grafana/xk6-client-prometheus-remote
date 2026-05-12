@@ -215,8 +215,8 @@ github.com/dgryski/go-sip13 v0.0.0-20190329191031-25c5027a8c7b/go.mod h1:vAd38F8
 github.com/dgryski/go-sip13 v0.0.0-20200911182023-62edffca9245/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
 github.com/digitalocean/godo v1.62.0/go.mod h1:p7dOjjtSBqCTUksqtA5Fd3uaKs9kyTq2xcz76ulEJRU=
 github.com/dimchansky/utfbom v1.1.0/go.mod h1:rO41eb7gLfo8SF1jd9F8HplJm1Fewwi4mQvIirEdv+8=
-github.com/dlclark/regexp2 v1.11.5 h1:Q/sSnsKerHeCkc/jSTNq1oCm7KiVgUMZRDUoRu0JQZQ=
-github.com/dlclark/regexp2 v1.11.5/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
+github.com/dlclark/regexp2 v1.12.0 h1:0j4c5qQmnC6XOWNjP3PIXURXN2gWx76rd3KvgdPkCz8=
+github.com/dlclark/regexp2 v1.12.0/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
 github.com/dnaeon/go-vcr v1.0.1/go.mod h1:aBB1+wY4s93YsC3HHjMBMrwTj2R9FHDzUr9KyGc8n1E=
 github.com/docker/distribution v2.7.1+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
 github.com/docker/docker v20.10.7+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
@@ -528,8 +528,8 @@ github.com/grafana/k6build v0.5.15 h1:4I5dkAWSMvXsElS1OpLbHj6ZXnebXZGnmwDXy5vcwS
 github.com/grafana/k6build v0.5.15/go.mod h1:Sk7SUiCnx2AgkirG3PrCtmJKYL+a8EeRdTzFfbxP0X8=
 github.com/grafana/k6provider v0.2.0 h1:Zu8FBnk6cJyTTkpCA+y+Ravc2YFeAQjsIfPpcbZtfB0=
 github.com/grafana/k6provider v0.2.0/go.mod h1:TJ6vzPm4yDQ2ji/Fet0dFOpdjktrKZp4hsnLZhRoZVA=
-github.com/grafana/sobek v0.0.0-20260219184149-bdae4a158e94 h1:yB8ad5rnZcJ6Aun/tobcYMMLtb3+tZp46M5Cs5v4j9w=
-github.com/grafana/sobek v0.0.0-20260219184149-bdae4a158e94/go.mod h1:YtuqiJX1W3XvRSilL/kUZzduJG3phPJWyzM9DiIEfBo=
+github.com/grafana/sobek v0.0.0-20260429085637-a66d4790012b h1:mM/qn1luOrRZHT3G+405JMdCx4mGxeLKpOkVBa5+lFw=
+github.com/grafana/sobek v0.0.0-20260429085637-a66d4790012b/go.mod h1:8pB+ag4SAbqtDxh1LNTeUI62/5f8mmEACImwbDHoUC0=
 github.com/grafana/xk6-dashboard v0.8.1 h1:QTEXPhkSYxiSN1lnl/cIlrnA97dUvOW+0yxQQCa9AAU=
 github.com/grafana/xk6-dashboard v0.8.1/go.mod h1:H1d7bUniuCFWWACgBdJBvpM5dC9vXehycQyMKzCC8CE=
 github.com/grafana/xk6-dashboard-assets v0.1.2 h1:n2wqytPICn2ZYsKa9HE6GlvFXk+WjByMfT4eM+ms3gE=
