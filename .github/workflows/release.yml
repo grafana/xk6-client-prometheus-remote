@@ -16,5 +16,5 @@ jobs:
       go-version: "1.25.x"
       os: '["linux", "windows", "darwin"]'
       arch: '["amd64", "arm64"]'
-      k6-version: "v1.7.1"
+      k6-version: "v2.0.0"
       xk6-version: "1.4.1"
