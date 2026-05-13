@@ -23,10 +23,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/xhit/go-str2duration/v2"
-	"go.k6.io/k6/js/common"
-	"go.k6.io/k6/js/modules"
-	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/netext/httpext"
+	"go.k6.io/k6/v2/js/common"
+	"go.k6.io/k6/v2/js/modules"
+	"go.k6.io/k6/v2/lib"
+	"go.k6.io/k6/v2/lib/netext/httpext"
 	"google.golang.org/protobuf/encoding/protowire"
 )
 

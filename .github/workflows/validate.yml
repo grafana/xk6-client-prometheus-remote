@@ -22,5 +22,5 @@ jobs:
       go-versions: '["1.25.x"]'
       golangci-lint-version: "v2.5.0"
       platforms: '["ubuntu-latest", "windows-latest", "macos-latest"]'
-      k6-versions: '["v1.7.1"]'
+      k6-versions: '["v2.0.0"]'
       xk6-version: "1.4.1"
