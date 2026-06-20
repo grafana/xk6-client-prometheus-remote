@@ -61,7 +61,7 @@ func (r *remoteWriteModule) NewModuleInstance(vu modules.VU) modules.Instance {
 // Exports returns the exports of the module for k6.
 func (r *RemoteWrite) Exports() modules.Exports {
 	return modules.Exports{
-		Named: map[string]interface{}{
+		Named: map[string]any{
 			"Client":                   r.xclient,
 			"Sample":                   r.sample,
 			"Timeseries":               r.timeseries,
@@ -292,7 +292,7 @@ func FromTimeseriesToPrometheusTimeseries(ts Timeseries) prompb.TimeSeries {
 // 1. replacing ${series_id} with the series_id provided.
 // 2. replacing ${series_id/<integer>} with the evaluation of that.
 // 3. if error in parsing return error.
-func compileTemplate(template string) (*labelGenerator, error) { //nolint:cyclop,funlen
+func compileTemplate(template string) (*labelGenerator, error) {
 	i := strings.Index(template, "${series_id")
 	if i == -1 {
 		return newIdentityLabelGenerator(template), nil
