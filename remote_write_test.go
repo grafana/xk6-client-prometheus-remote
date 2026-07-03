@@ -51,7 +51,7 @@ func TestEvaluateTemplate(t *testing.T) {
 	}
 }
 
-func TestGenerateFromTemplates(t *testing.T) { //nolint:funlen // long test function
+func TestGenerateFromTemplates(t *testing.T) {
 	t.Parallel()
 
 	type args struct {
@@ -205,7 +205,7 @@ func TestGenerateFromTemplates(t *testing.T) { //nolint:funlen // long test func
 }
 
 // this test that the prompb stream marshalling implementation produces the same result as the upstream one.
-func TestStreamEncoding(t *testing.T) { //nolint:funlen // long test function
+func TestStreamEncoding(t *testing.T) {
 	t.Parallel()
 
 	seed := time.Now().Unix()
