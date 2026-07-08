@@ -5,7 +5,6 @@ go 1.25.0
 toolchain go1.25.11
 
 require (
-	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v1.0.0
 	github.com/grafana/sobek v0.0.0-20260429085637-a66d4790012b
 	github.com/pkg/errors v0.9.1

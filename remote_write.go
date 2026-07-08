@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto" //nolint:staticcheck // Required for compatibility with prometheus prompb package
 	"github.com/golang/snappy"
 	"github.com/grafana/sobek"
 	"github.com/pkg/errors"
@@ -28,6 +27,8 @@ import (
 	"go.k6.io/k6/v2/lib"
 	"go.k6.io/k6/v2/lib/netext/httpext"
 	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 var (
@@ -526,7 +527,7 @@ func (c *Client) store(batch []prompb.TimeSeries) (httpext.Response, error) {
 		Timeseries: batch,
 	}
 
-	data, err := proto.Marshal(&req)
+	data, err := proto.Marshal(protoadapt.MessageV2Of(&req))
 	if err != nil {
 		return *httpext.NewResponse(), errors.Wrap(err, "failed to marshal remote-write request")
 	}
