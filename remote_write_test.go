@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto" //nolint:staticcheck // Required for compatibility with prometheus prompb package
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 func TestEvaluateTemplate(t *testing.T) {
@@ -167,7 +168,7 @@ func TestGenerateFromTemplates(t *testing.T) {
 
 			req := new(prompb.WriteRequest)
 
-			require.NoError(t, proto.Unmarshal(buf.Bytes(), req))
+			require.NoError(t, proto.Unmarshal(buf.Bytes(), protoadapt.MessageV2Of(req)))
 			got := req.Timeseries
 
 			require.NoError(t, err)
@@ -218,7 +219,7 @@ func TestStreamEncoding(t *testing.T) {
 	minValue := 10
 	maxValue := 100000
 	// this is the upstream encoding. It is purposefully this "handwritten"
-	d, _ := proto.Marshal(&prompb.WriteRequest{
+	d, _ := proto.Marshal(protoadapt.MessageV2Of(&prompb.WriteRequest{
 		Timeseries: []prompb.TimeSeries{
 			{
 				Samples: []prompb.Sample{{
@@ -319,7 +320,7 @@ func TestStreamEncoding(t *testing.T) {
 				},
 			},
 		},
-	})
+	}))
 
 	// #nosec G404 -- Using math/rand in test code with deterministic seed for reproducible tests
 	r = rand.New(rand.NewSource(seed)) // reset
