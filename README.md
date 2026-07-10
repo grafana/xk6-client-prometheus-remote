@@ -39,7 +39,7 @@ export default function () {
         ]
     }]);
     check(res, {
-        'is status 200': (r) => r.status === 200,
+        'is status 2xx': (r) => r.status >= 200 && r.status < 300,
     });
     sleep(1)
 }
@@ -101,6 +101,16 @@ $ xk6 build --with github.com/grafana/xk6-client-prometheus-remote@latest
 ```
 
 For more build options and how to use xk6, check out the [xk6 documentation](https://github.com/grafana/xk6).
+
+## Validation
+
+To validate the extension end-to-end against a real Prometheus instance in Docker, run:
+
+```bash
+$ scripts/validate.sh
+```
+
+This builds a k6 binary with the extension, starts Prometheus with the remote write receiver enabled, remote-writes a metric, and confirms it is queryable. Useful for catching wire/protocol regressions after a Prometheus dependency bump. Requires `docker`, `xk6`, and `curl`.
 
 ## Contribute
 
