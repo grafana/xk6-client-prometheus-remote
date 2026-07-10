@@ -102,6 +102,16 @@ $ xk6 build --with github.com/grafana/xk6-client-prometheus-remote@latest
 
 For more build options and how to use xk6, check out the [xk6 documentation](https://github.com/grafana/xk6).
 
+## Validation
+
+To validate the extension end-to-end against a real Prometheus instance in Docker, run:
+
+```bash
+$ scripts/validate.sh
+```
+
+This builds a k6 binary with the extension, starts Prometheus with the remote write receiver enabled, remote-writes a metric, and confirms it is queryable. Useful for catching wire/protocol regressions after a Prometheus dependency bump. Requires `docker`, `xk6`, and `curl`.
+
 ## Contribute
 
 If you want to contribute or help with the development of **xk6-client-prometheus-remote**, start by reading [CONTRIBUTING.md](CONTRIBUTING.md). 
