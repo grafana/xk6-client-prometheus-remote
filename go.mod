@@ -8,7 +8,7 @@ require (
 	github.com/golang/snappy v1.0.0
 	github.com/grafana/sobek v0.0.0-20260429085637-a66d4790012b
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/prometheus v0.313.0
+	github.com/prometheus/prometheus v0.313.2
 	github.com/stretchr/testify v1.11.1
 	github.com/xhit/go-str2duration/v2 v2.1.0
 	go.k6.io/k6/v2 v2.0.0
