@@ -56,17 +56,17 @@ func BenchmarkEvaluateTemplatesComplex(b *testing.B) {
 
 //nolint:gochecknoglobals // benchmark test constants
 var benchmarkLabels = map[string]string{
-	"__name__":        "k6_generated_metric_${series_id/1000}",
-	"series_id":       "${series_id}",
-	"cardinality_1e1": "${series_id/10}",
-	"cardinality_1e2": "${series_id/100}",
-	"cardinality_1e3": "${series_id/1000}",
-	"cardinality_1e4": "${series_id/10000}",
-	"cardinality_1e5": "${series_id/100000}",
-	"cardinality_1e6": "${series_id/1000000}",
-	"cardinality_1e7": "${series_id/10000000}",
-	"cardinality_2":   "${series_id%2}",
-	"cardinality_50":  "${series_id%50}",
+	"__name__":          "k6_generated_metric_${series_id/1000}",
+	"series_id":         "${series_id}",
+	cardinality1e1Label: "${series_id/10}",
+	"cardinality_1e2":   "${series_id/100}",
+	cardinality1e3Label: "${series_id/1000}",
+	"cardinality_1e4":   "${series_id/10000}",
+	"cardinality_1e5":   "${series_id/100000}",
+	"cardinality_1e6":   "${series_id/1000000}",
+	"cardinality_1e7":   "${series_id/10000000}",
+	cardinality2Label:   "${series_id%2}",
+	"cardinality_50":    "${series_id%50}",
 }
 
 type testServer struct {
