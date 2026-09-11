@@ -232,7 +232,7 @@ func TestStreamEncoding(t *testing.T) {
 			{
 				Samples: []prompb.Sample{{
 					Value:     valueBetween(r, minValue, maxValue),
-					Timestamp: (timestamp),
+					Timestamp: timestamp,
 				}},
 				Labels: []prompb.Label{
 					{Name: "fifth", Value: "some 7 thing"},
