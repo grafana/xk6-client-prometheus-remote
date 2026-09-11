@@ -14,6 +14,14 @@ import (
 	"google.golang.org/protobuf/protoadapt"
 )
 
+const (
+	cardinality1e1Label = "cardinality_1e1"
+	cardinality1e3Label = "cardinality_1e3"
+	cardinality2Label   = "cardinality_2"
+	cardinality10Label  = "cardinality_10"
+	someOneThing        = "some 1 thing"
+)
+
 func TestEvaluateTemplate(t *testing.T) {
 	t.Parallel()
 
@@ -84,12 +92,12 @@ func TestGenerateFromTemplates(t *testing.T) {
 				minSeriesID: 50,
 				maxSeriesID: 55,
 				labelsTemplate: map[string]string{
-					"__name__":        "k6_generated_metric_${series_id}",
-					"series_id":       "${series_id}",
-					"cardinality_1e1": "${series_id/10}",
-					"cardinality_1e3": "${series_id/1000}",
-					"cardinality_2":   "${series_id%2}",
-					"cardinality_10":  "${series_id%10}",
+					"__name__":          "k6_generated_metric_${series_id}",
+					"series_id":         "${series_id}",
+					cardinality1e1Label: "${series_id/10}",
+					cardinality1e3Label: "${series_id/1000}",
+					cardinality2Label:   "${series_id%2}",
+					cardinality10Label:  "${series_id%10}",
 				},
 			},
 			want: want{
@@ -99,50 +107,50 @@ func TestGenerateFromTemplates(t *testing.T) {
 					{
 						Labels: []prompb.Label{
 							{Name: "__name__", Value: "k6_generated_metric_50"},
-							{Name: "cardinality_10", Value: "0"},
-							{Name: "cardinality_1e1", Value: "5"},
-							{Name: "cardinality_1e3", Value: "0"},
-							{Name: "cardinality_2", Value: "0"},
+							{Name: cardinality10Label, Value: "0"},
+							{Name: cardinality1e1Label, Value: "5"},
+							{Name: cardinality1e3Label, Value: "0"},
+							{Name: cardinality2Label, Value: "0"},
 							{Name: "series_id", Value: "50"},
 						},
 						Samples: []prompb.Sample{{Timestamp: 123456789}},
 					}, {
 						Labels: []prompb.Label{
 							{Name: "__name__", Value: "k6_generated_metric_51"},
-							{Name: "cardinality_10", Value: "1"},
-							{Name: "cardinality_1e1", Value: "5"},
-							{Name: "cardinality_1e3", Value: "0"},
-							{Name: "cardinality_2", Value: "1"},
+							{Name: cardinality10Label, Value: "1"},
+							{Name: cardinality1e1Label, Value: "5"},
+							{Name: cardinality1e3Label, Value: "0"},
+							{Name: cardinality2Label, Value: "1"},
 							{Name: "series_id", Value: "51"},
 						},
 						Samples: []prompb.Sample{{Timestamp: 123456789}},
 					}, {
 						Labels: []prompb.Label{
 							{Name: "__name__", Value: "k6_generated_metric_52"},
-							{Name: "cardinality_10", Value: "2"},
-							{Name: "cardinality_1e1", Value: "5"},
-							{Name: "cardinality_1e3", Value: "0"},
-							{Name: "cardinality_2", Value: "0"},
+							{Name: cardinality10Label, Value: "2"},
+							{Name: cardinality1e1Label, Value: "5"},
+							{Name: cardinality1e3Label, Value: "0"},
+							{Name: cardinality2Label, Value: "0"},
 							{Name: "series_id", Value: "52"},
 						},
 						Samples: []prompb.Sample{{Timestamp: 123456789}},
 					}, {
 						Labels: []prompb.Label{
 							{Name: "__name__", Value: "k6_generated_metric_53"},
-							{Name: "cardinality_10", Value: "3"},
-							{Name: "cardinality_1e1", Value: "5"},
-							{Name: "cardinality_1e3", Value: "0"},
-							{Name: "cardinality_2", Value: "1"},
+							{Name: cardinality10Label, Value: "3"},
+							{Name: cardinality1e1Label, Value: "5"},
+							{Name: cardinality1e3Label, Value: "0"},
+							{Name: cardinality2Label, Value: "1"},
 							{Name: "series_id", Value: "53"},
 						},
 						Samples: []prompb.Sample{{Timestamp: 123456789}},
 					}, {
 						Labels: []prompb.Label{
 							{Name: "__name__", Value: "k6_generated_metric_54"},
-							{Name: "cardinality_10", Value: "4"},
-							{Name: "cardinality_1e1", Value: "5"},
-							{Name: "cardinality_1e3", Value: "0"},
-							{Name: "cardinality_2", Value: "0"},
+							{Name: cardinality10Label, Value: "4"},
+							{Name: cardinality1e1Label, Value: "5"},
+							{Name: cardinality1e3Label, Value: "0"},
+							{Name: cardinality2Label, Value: "0"},
 							{Name: "series_id", Value: "54"},
 						},
 						Samples: []prompb.Sample{{Timestamp: 123456789}},
@@ -224,15 +232,15 @@ func TestStreamEncoding(t *testing.T) {
 			{
 				Samples: []prompb.Sample{{
 					Value:     valueBetween(r, minValue, maxValue),
-					Timestamp: (timestamp),
+					Timestamp: timestamp,
 				}},
 				Labels: []prompb.Label{
 					{Name: "fifth", Value: "some 7 thing"},
 					{Name: "forth", Value: "some 15 thing"},
 					{Name: "here", Value: "else"},
 					{Name: "here2", Value: "else2"},
-					{Name: "sixth", Value: "some 1 thing"},
-					{Name: "third", Value: "some 1 thing"},
+					{Name: "sixth", Value: someOneThing},
+					{Name: "third", Value: someOneThing},
 				},
 			},
 			{
@@ -245,7 +253,7 @@ func TestStreamEncoding(t *testing.T) {
 					{Name: "forth", Value: "some 16 thing"},
 					{Name: "here", Value: "else"},
 					{Name: "here2", Value: "else2"},
-					{Name: "sixth", Value: "some 1 thing"},
+					{Name: "sixth", Value: someOneThing},
 					{Name: "third", Value: "some 0 thing"},
 				},
 			},
@@ -259,8 +267,8 @@ func TestStreamEncoding(t *testing.T) {
 					{Name: "forth", Value: "some 17 thing"},
 					{Name: "here", Value: "else"},
 					{Name: "here2", Value: "else2"},
-					{Name: "sixth", Value: "some 1 thing"},
-					{Name: "third", Value: "some 1 thing"},
+					{Name: "sixth", Value: someOneThing},
+					{Name: "third", Value: someOneThing},
 				},
 			},
 			{
@@ -273,7 +281,7 @@ func TestStreamEncoding(t *testing.T) {
 					{Name: "forth", Value: "some 18 thing"},
 					{Name: "here", Value: "else"},
 					{Name: "here2", Value: "else2"},
-					{Name: "sixth", Value: "some 1 thing"},
+					{Name: "sixth", Value: someOneThing},
 					{Name: "third", Value: "some 0 thing"},
 				},
 			},
@@ -287,8 +295,8 @@ func TestStreamEncoding(t *testing.T) {
 					{Name: "forth", Value: "some 19 thing"},
 					{Name: "here", Value: "else"},
 					{Name: "here2", Value: "else2"},
-					{Name: "sixth", Value: "some 1 thing"},
-					{Name: "third", Value: "some 1 thing"},
+					{Name: "sixth", Value: someOneThing},
+					{Name: "third", Value: someOneThing},
 				},
 			},
 			{
@@ -316,7 +324,7 @@ func TestStreamEncoding(t *testing.T) {
 					{Name: "here", Value: "else"},
 					{Name: "here2", Value: "else2"},
 					{Name: "sixth", Value: "some 2 thing"},
-					{Name: "third", Value: "some 1 thing"},
+					{Name: "third", Value: someOneThing},
 				},
 			},
 		},
@@ -344,17 +352,17 @@ func TestStreamEncoding(t *testing.T) {
 func BenchmarkWriteFor(b *testing.B) {
 	tsBuf := new(bytes.Buffer)
 	template, err := compileLabelTemplates(map[string]string{
-		"__name__":        "k6_generated_metric_${series_id/1000}", // Name of the series.
-		"series_id":       "${series_id}",                          // Each value of this label will match 1 series.
-		"cardinality_1e1": "${series_id/10}",                       // Each value of this label will match 10 series.
-		"cardinality_1e2": "${series_id/100}",                      // Each value of this label will match 100 series.
-		"cardinality_1e3": "${series_id/1000}",                     // Each value of this label will match 1000 series.
-		"cardinality_1e4": "${series_id/10000}",                    // Each value of this label will match 10000 series.
-		"cardinality_1e5": "${series_id/100000}",                   // Each value of this label will match 100000 series.
-		"cardinality_1e6": "${series_id/1000000}",                  // Each value of this label will match 1000000 series.
-		"cardinality_1e7": "${series_id/10000000}",                 // Each value of this label will match 10000000 series.
-		"cardinality_1e8": "${series_id/100000000}",                // Each value of this label will match 100000000 series.
-		"cardinality_1e9": "${series_id/1000000000}",               // Each value of this label will match 1000000000 series.
+		"__name__":          "k6_generated_metric_${series_id/1000}", // Name of the series.
+		"series_id":         "${series_id}",                          // Each value of this label will match 1 series.
+		cardinality1e1Label: "${series_id/10}",                       // Each value of this label will match 10 series.
+		"cardinality_1e2":   "${series_id/100}",                      // Each value of this label will match 100 series.
+		cardinality1e3Label: "${series_id/1000}",                     // Each value of this label will match 1000 series.
+		"cardinality_1e4":   "${series_id/10000}",                    // Each value of this label will match 10000 series.
+		"cardinality_1e5":   "${series_id/100000}",                   // Each value of this label will match 100000 series.
+		"cardinality_1e6":   "${series_id/1000000}",                  // Each value of this label will match 1000000 series.
+		"cardinality_1e7":   "${series_id/10000000}",                 // Each value of this label will match 10000000 series.
+		"cardinality_1e8":   "${series_id/100000000}",                // Each value of this label will match 100000000 series.
+		"cardinality_1e9":   "${series_id/1000000000}",               // Each value of this label will match 1000000000 series.
 	})
 	require.NoError(b, err)
 	template.writeFor(tsBuf, 15, 15, 234)
