@@ -1,8 +1,8 @@
 module github.com/grafana/xk6-client-prometheus-remote
 
-go 1.25.0
+go 1.26.0
 
-toolchain go1.25.14
+toolchain go1.26.8
 
 require (
 	github.com/golang/snappy v1.0.0
