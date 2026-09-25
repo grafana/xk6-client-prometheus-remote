@@ -8,7 +8,7 @@ require (
 	github.com/golang/snappy v1.0.0
 	github.com/grafana/sobek v0.0.0-20260908083152-4698bc773ae7
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/prometheus v0.313.2
+	github.com/prometheus/prometheus v0.314.0
 	github.com/stretchr/testify v1.12.1
 	github.com/xhit/go-str2duration/v2 v2.1.0
 	go.k6.io/k6/v2 v2.3.0
@@ -28,7 +28,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/pprof v0.0.0-20260604005048-7023385849c0 // indirect
+	github.com/google/pprof v0.0.0-20260709232956-b9395ee17fa0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 // indirect
 	github.com/grafana/sobek-webapi-encoding v0.1.0 // indirect
