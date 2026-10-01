@@ -10,7 +10,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/prometheus v0.313.2
 	github.com/stretchr/testify v1.12.1
-	github.com/xhit/go-str2duration/v2 v2.1.0
+	github.com/xhit/go-str2duration/v2 v2.2.0
 	go.k6.io/k6/v2 v2.3.0
 	google.golang.org/protobuf v1.36.12
 )
