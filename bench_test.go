@@ -107,7 +107,7 @@ func newTestServer(tb testing.TB) *testServer {
 	ts.vu.StateField.Tags = lib.NewVUStateTags(registry.RootTagSet())
 
 	go func() {
-		for range ch { //nolint:revive // we just need to drain the channel
+		for range ch { // we just need to drain the channel
 		}
 	}()
 
